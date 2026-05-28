@@ -31,6 +31,8 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, assign) BOOL dndEnabled;
 @property (nonatomic, copy) NSString *dndStart;
 @property (nonatomic, copy) NSString *dndEnd;
+@property (nonatomic, assign) BOOL alarmEnabled;
+@property (nonatomic, copy) NSString *alarmTime;
 - (instancetype)initWithType:(MJProfileDetailType)type title:(NSString *)title;
 @end
 
@@ -427,6 +429,8 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     self.dndEnabled = [defaults boolForKey:@"mattress_dnd_enabled"];
     self.dndStart = [defaults objectForKey:@"mattress_dnd_start"] ?: @"22:00";
     self.dndEnd = [defaults objectForKey:@"mattress_dnd_end"] ?: @"06:00";
+    self.alarmEnabled = [defaults objectForKey:@"body_alarm_enabled"] ? [defaults boolForKey:@"body_alarm_enabled"] : YES;
+    self.alarmTime = [defaults objectForKey:@"body_alarm_time"] ?: @"07:30";
 }
 
 - (void)buildItems
@@ -508,6 +512,10 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 
     if (self.type == MJProfileDetailTypeMattressAuto) {
         [self buildMattressAutoUIInScrollView:scrollView];
+        return;
+    }
+    if (self.type == MJProfileDetailTypeAlarm) {
+        [self buildAlarmUIInScrollView:scrollView];
         return;
     }
 
@@ -636,6 +644,51 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
 }
 
+- (void)buildAlarmUIInScrollView:(UIScrollView *)scrollView
+{
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, 0, iPhoneWidth - 40, 210)];
+    card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    card.layer.cornerRadius = 18.0;
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [scrollView addSubview:card];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 18, card.bounds.size.width - 100, 24)];
+    title.text = @"体感调节唤醒";
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    [card addSubview:title];
+
+    UISwitch *alarmSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(card.bounds.size.width - 70, 16, 52, 32)];
+    alarmSwitch.on = self.alarmEnabled;
+    [alarmSwitch addTarget:self action:@selector(alarmSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [card addSubview:alarmSwitch];
+
+    UIButton *timeBtn = [self timeButtonWithFrame:CGRectMake(18, 64, card.bounds.size.width - 36, 52) title:self.alarmTime tag:803];
+    [card addSubview:timeBtn];
+
+    UILabel *repeat = [[UILabel alloc] initWithFrame:CGRectMake(18, 132, card.bounds.size.width - 36, 20)];
+    repeat.text = @"重复  周一 至 周五";
+    repeat.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    repeat.font = [UIFont systemFontOfSize:13.0];
+    [card addSubview:repeat];
+
+    UILabel *mode = [[UILabel alloc] initWithFrame:CGRectMake(18, 160, card.bounds.size.width - 36, 20)];
+    mode.text = @"唤醒方式  体感调节唤醒";
+    mode.textColor = [UIColor colorWithValue:@"#6b7280"];
+    mode.font = [UIFont systemFontOfSize:13.0];
+    [card addSubview:mode];
+
+    UILabel *note = [[UILabel alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(card.frame) + 18, iPhoneWidth - 48, 70)];
+    note.text = @"到达设定时间后，床垫会通过渐进式支撑变化进行温和唤醒。";
+    note.textColor = [UIColor colorWithValue:@"#6b7280"];
+    note.font = [UIFont systemFontOfSize:13.0];
+    note.numberOfLines = 0;
+    [scrollView addSubview:note];
+    scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
 - (UILabel *)detailSectionLabel:(NSString *)text y:(CGFloat)y
 {
     UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 18)];
@@ -722,10 +775,50 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+- (void)alarmSwitchChanged:(UISwitch *)sender
+{
+    self.alarmEnabled = sender.on;
+    [[NSUserDefaults standardUserDefaults] setBool:self.alarmEnabled forKey:@"body_alarm_enabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 - (void)timeButtonPressed:(UIButton *)sender
 {
+    if (sender.tag == 803) {
+        [self showAlarmTimePicker:sender];
+        return;
+    }
     BOOL editingStart = sender.tag == 801;
     [self showTimePickerForStart:editingStart sender:sender];
+}
+
+- (void)showAlarmTimePicker:(UIButton *)sender
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"唤醒时间"
+                                                                   message:@"\n\n\n\n\n\n\n\n"
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectMake(12, 42, alert.view.bounds.size.width - 24, 180)];
+    picker.datePickerMode = UIDatePickerModeTime;
+    if (@available(iOS 13.4, *)) {
+        picker.preferredDatePickerStyle = UIDatePickerStyleWheels;
+    }
+    picker.locale = [NSLocale localeWithLocaleIdentifier:@"zh_CN"];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"HH:mm";
+    NSDate *date = [formatter dateFromString:self.alarmTime];
+    if (date) {
+        picker.date = date;
+    }
+    [alert.view addSubview:picker];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSString *time = [formatter stringFromDate:picker.date];
+        self.alarmTime = time;
+        [[NSUserDefaults standardUserDefaults] setObject:time forKey:@"body_alarm_time"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [sender setTitle:time forState:UIControlStateNormal];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)showTimePickerForStart:(BOOL)editingStart sender:(UIButton *)sender

@@ -25,6 +25,7 @@
 @property (strong, nonatomic) UIView *topView;
 @property (strong, nonatomic) UIButton *leftBtn;
 @property (strong, nonatomic) UIButton *rightBtn;
+@property (strong, nonatomic) UIButton *bedNameEditBtn;
 
 @property (strong, nonatomic) UILabel *stateLabel;
 
@@ -107,6 +108,11 @@
 @property (strong, nonatomic) NSArray<UILabel *> *autoZoneStatusLabels;
 @property (strong, nonatomic) NSArray<UIView *> *autoZoneDots;
 @property (strong, nonatomic) NSArray<UIView *> *autoZoneCards;
+@property (strong, nonatomic) NSArray<UILabel *> *autoModeTimeLabels;
+@property (strong, nonatomic) NSArray<UIButton *> *autoModeCards;
+@property (strong, nonatomic) NSTimer *autoModeCountdownTimer;
+@property (assign, nonatomic) NSInteger autoModeCountdownSeconds;
+@property (assign, nonatomic) NSInteger activeAutoModeIndex;
 
 
 @property (assign, nonatomic) BedMode connectedMode;    //连接设备的型号
@@ -235,6 +241,15 @@
     _rightBtn.titleLabel.font = [UIFont systemFontOfSize:12.0];
     [_rightBtn addTarget:self action:@selector(changeBedSide:) forControlEvents:UIControlEventTouchUpInside];
     [bedSideCapsule addSubview:_rightBtn];
+
+    [_leftBtn setTitle:[self bedDisplayNameForSide:@"01"] forState:UIControlStateNormal];
+    [_rightBtn setTitle:[self bedDisplayNameForSide:@"02"] forState:UIControlStateNormal];
+    _bedNameEditBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    _bedNameEditBtn.frame = CGRectMake(CGRectGetMinX(bedSideCapsule.frame) - 34, STATUS_BAR_HEIGHT + 7, 28, 30);
+    [_bedNameEditBtn setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
+    _bedNameEditBtn.tintColor = [UIColor colorWithValue:@"#6b7280"];
+    [_bedNameEditBtn addTarget:self action:@selector(editCurrentBedName) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:_bedNameEditBtn];
     
     
     UIView *btnBG = [[UIView alloc] initWithFrame:CGRectMake(SCALE(20), STATUS_BAR_HEIGHT + 48, iPhoneWidth - SCALE(40), 48)];
@@ -450,6 +465,8 @@
     CGFloat autoGridTop = CGRectGetMaxY(modeTitle.frame) + 10;
     CGFloat autoCardW = (iPhoneWidth - cardPad * 2 - cardGap) / 2.0;
     CGFloat autoCardH = 86.0;
+    NSMutableArray *autoTimeLabels = [NSMutableArray array];
+    NSMutableArray *autoModeCards = [NSMutableArray array];
     for (int i = 0; i < autoModes.count; i++) {
         NSDictionary *dict = autoModes[i];
         NSInteger col = i % 2;
@@ -464,6 +481,7 @@
         modeCard.tag = 260 + i;
         [modeCard addTarget:self action:@selector(modeChanged:) forControlEvents:UIControlEventTouchUpInside];
         [self.autoModeView addSubview:modeCard];
+        [autoModeCards addObject:modeCard];
 
         UIView *iconBg = [[UIView alloc] initWithFrame:CGRectMake(14, 14, 32, 32)];
         iconBg.backgroundColor = [UIColor colorWithValue:dict[@"color"] alpha:0.12];
@@ -494,7 +512,11 @@
         timeLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
         timeLabel.font = [UIFont systemFontOfSize:11.0];
         [modeCard addSubview:timeLabel];
+        [autoTimeLabels addObject:timeLabel];
     }
+    self.autoModeTimeLabels = autoTimeLabels.copy;
+    self.autoModeCards = autoModeCards.copy;
+    self.activeAutoModeIndex = -1;
 
     autoScrollView.contentSize = CGSizeMake(0, autoGridTop + autoCardH * 2 + cardGap + 24);
     self.autoModeView.hidden = YES;
@@ -939,6 +961,40 @@
 
 #pragma mark -左右床切换
 
+- (NSString *)bedDisplayNameForSide:(NSString *)side
+{
+    NSString *key = [side isEqualToString:@"01"] ? @"mattress_left_bed_name" : @"mattress_right_bed_name";
+    NSString *saved = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    if (saved.length > 0) {
+        return saved;
+    }
+    return [side isEqualToString:@"01"] ? @"左床" : @"右床";
+}
+
+- (void)editCurrentBedName
+{
+    NSString *currentSide = _side ?: @"01";
+    NSString *title = [currentSide isEqualToString:@"01"] ? @"修改左床名称" : @"修改右床名称";
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:nil preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.text = [self bedDisplayNameForSide:currentSide];
+        textField.placeholder = @"输入名称";
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSString *name = [alert.textFields.firstObject.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (name.length == 0) {
+            return;
+        }
+        NSString *key = [currentSide isEqualToString:@"01"] ? @"mattress_left_bed_name" : @"mattress_right_bed_name";
+        [[NSUserDefaults standardUserDefaults] setObject:name forKey:key];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [self.leftBtn setTitle:[self bedDisplayNameForSide:@"01"] forState:UIControlStateNormal];
+        [self.rightBtn setTitle:[self bedDisplayNameForSide:@"02"] forState:UIControlStateNormal];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 //切换左右床
 - (void)changeBedSide:(UIButton *)btn
 {
@@ -1039,14 +1095,51 @@
 - (void)modeChanged:(UIButton *)btn
 {
     NSInteger tag = btn.tag - 260;
-    ModeTimeView *modeView = [[ModeTimeView alloc] initWithFrame:CGRectMake(0, 0, iPhoneWidth, iPhoneHeight)];
-    modeView.delegate = self;
-    [modeView show:tag];
+    [self startAutoModeCountdownAtIndex:tag minutes:15];
 }
 
 - (void)modeTimeView:(ModeTimeView *)view doTimeLevel:(int)level
 {
     
+}
+
+- (void)startAutoModeCountdownAtIndex:(NSInteger)index minutes:(NSInteger)minutes
+{
+    self.activeAutoModeIndex = index;
+    self.autoModeCountdownSeconds = minutes * 60;
+    [self.autoModeCountdownTimer invalidate];
+    self.autoModeCountdownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(updateAutoModeCountdown) userInfo:nil repeats:YES];
+    [self updateAutoModeCountdown];
+}
+
+- (void)updateAutoModeCountdown
+{
+    for (NSInteger i = 0; i < self.autoModeCards.count; i++) {
+        UIButton *card = self.autoModeCards[i];
+        BOOL active = i == self.activeAutoModeIndex && self.autoModeCountdownSeconds > 0;
+        card.backgroundColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.10 : 0.03];
+        card.layer.borderColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.35 : 0.06].CGColor;
+    }
+
+    if (self.activeAutoModeIndex >= 0 && self.activeAutoModeIndex < self.autoModeTimeLabels.count) {
+        NSInteger minutes = MAX(0, self.autoModeCountdownSeconds) / 60;
+        NSInteger seconds = MAX(0, self.autoModeCountdownSeconds) % 60;
+        UILabel *label = self.autoModeTimeLabels[self.activeAutoModeIndex];
+        label.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)minutes, (long)seconds];
+        label.textColor = [UIColor colorWithValue:@"#00d4ff"];
+    }
+
+    if (self.autoModeCountdownSeconds <= 0) {
+        [self.autoModeCountdownTimer invalidate];
+        self.autoModeCountdownTimer = nil;
+        self.activeAutoModeIndex = -1;
+        for (UILabel *label in self.autoModeTimeLabels) {
+            label.text = @"15 min";
+            label.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        }
+        return;
+    }
+    self.autoModeCountdownSeconds -= 1;
 }
 
 
@@ -1310,7 +1403,7 @@
         
         level = 1;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 0;
+            slider.value = 85;
         }
     }
     
@@ -1330,7 +1423,7 @@
 //        }];
         level = 3;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 100;
+            slider.value = 0;
         }
     }
     
@@ -1654,6 +1747,8 @@
     [super viewDidDisappear:animated];
     [self.manualAdjustingTimer invalidate];
     self.manualAdjustingTimer = nil;
+    [self.autoModeCountdownTimer invalidate];
+    self.autoModeCountdownTimer = nil;
     _bleManager.delegate = nil;
 }
 

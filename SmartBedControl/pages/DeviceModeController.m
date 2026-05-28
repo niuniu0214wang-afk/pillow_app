@@ -38,6 +38,25 @@
 
 @implementation DeviceModeController
 
+- (NSArray *)catalogForCurrentCategory {
+    if (self.selectIndex == 60) {
+        return @[
+            @{@"name":@"AI Adaptive Mattress Pro", @"model":@"SR-1000", @"prefix":@"MJ-1"},
+            @{@"name":@"SmartRest Elite", @"model":@"SR-2000", @"prefix":@"MJ-1"},
+            @{@"name":@"SmartRest Lite", @"model":@"SR-500", @"prefix":@"MJ-1"},
+            @{@"name":@"SmartRest Max", @"model":@"SR-3000", @"prefix":@"MJ-1"},
+            @{@"name":@"Rest Core Pro", @"model":@"RC-100", @"prefix":@"MJ-1"},
+            @{@"name":@"Rest Core Elite", @"model":@"RC-200", @"prefix":@"MJ-1"},
+            @{@"name":@"Rest Core Max", @"model":@"RC-300", @"prefix":@"MJ-1"}
+        ];
+    }
+    return @[
+        @{@"name":@"DreamPillow Pro", @"model":@"DP-200", @"prefix":@"MJ-2"},
+        @{@"name":@"DreamPillow Lite", @"model":@"DP-100", @"prefix":@"MJ-2"},
+        @{@"name":@"DreamPillow Ultra", @"model":@"DP-500", @"prefix":@"MJ-2"}
+    ];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = mainColor;
@@ -63,6 +82,9 @@
 
 // 从 DataCenter 加载设备列表，过滤当前分类（0=床垫 1=枕头）
 - (void)reloadDevices {
+    self.categoryDevices = [self catalogForCurrentCategory];
+    [self applySearchFilter];
+    return;
     NSArray<BedModel *> *all = [[DataCenter shareInstance] getAllBeds];
     NSArray *filtered = @[];
     if (self.selectIndex == 60) {
@@ -109,6 +131,13 @@
 #pragma mark - 右侧主内容区域
 
 - (void)setupMainView {
+    UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    backBtn.frame = CGRectMake(10, STATUS_BAR_HEIGHT - 2, 44, 36);
+    [backBtn setImage:[UIImage systemImageNamed:@"chevron.left"] forState:UIControlStateNormal];
+    backBtn.tintColor = [UIColor colorWithValue:@"#9ca3af"];
+    [backBtn addTarget:self action:@selector(backToPreviousPage) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:backBtn];
+
     self.mainTitleLabel = [[UILabel alloc] initWithFrame:CGRectMake(90, STATUS_BAR_HEIGHT, iPhoneWidth - 110, 35)];
     self.mainTitleLabel.text = @"设备管理";
     self.mainTitleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
@@ -213,9 +242,9 @@
         self.displayDevices = self.categoryDevices ?: @[];
     } else {
         NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(BedModel *bed, NSDictionary *bindings) {
-            NSString *name = bed.bedName ?: @"";
-            NSString *mac = bed.mac ?: @"";
-            NSString *mode = bed.mode == PillowNormal ? @"Pillow" : @"Mattress";
+            NSString *name = [bed isKindOfClass:[NSDictionary class]] ? [(NSDictionary *)bed objectForKey:@"name"] : (bed.bedName ?: @"");
+            NSString *mac = [bed isKindOfClass:[NSDictionary class]] ? [(NSDictionary *)bed objectForKey:@"model"] : (bed.mac ?: @"");
+            NSString *mode = self.selectIndex == 60 ? @"Mattress" : @"Pillow";
             return [name rangeOfString:keyword options:NSCaseInsensitiveSearch].location != NSNotFound ||
                    [mac rangeOfString:keyword options:NSCaseInsensitiveSearch].location != NSNotFound ||
                    [mode rangeOfString:keyword options:NSCaseInsensitiveSearch].location != NSNotFound;
@@ -234,14 +263,23 @@
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     // 真实数据；空时 +1 用于显示"添加"卡片
-    return self.displayDevices.count + 1;
+    return self.displayDevices.count;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     BedCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"BedCell" forIndexPath:indexPath];
 
     if ((NSUInteger)indexPath.item < self.displayDevices.count) {
-        BedModel *bed = self.displayDevices[indexPath.item];
+        id item = self.displayDevices[indexPath.item];
+        if ([item isKindOfClass:[NSDictionary class]]) {
+            NSDictionary *device = (NSDictionary *)item;
+            cell.bedName.text = device[@"name"];
+            cell.bedMode.text = device[@"model"];
+            cell.boomView.layer.borderWidth = 1.0;
+            cell.boomView.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+            return cell;
+        }
+        BedModel *bed = item;
         cell.bedName.text = bed.bedName.length > 0 ? bed.bedName : @"智能床垫";
         NSString *modeStr = @"BedNormal";
         if (bed.mode == BedPro)  modeStr = @"BedPro";
@@ -266,7 +304,16 @@
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     if ((NSUInteger)indexPath.item < self.displayDevices.count) {
-        BedModel *bed = self.displayDevices[indexPath.item];
+        id item = self.displayDevices[indexPath.item];
+        if ([item isKindOfClass:[NSDictionary class]]) {
+            NSDictionary *device = (NSDictionary *)item;
+            SearchController *searchVC = [[SearchController alloc] init];
+            searchVC.deviceName = device[@"prefix"];
+            self.manager.deviceName = searchVC.deviceName;
+            [self.navigationController pushViewController:searchVC animated:YES];
+            return;
+        }
+        BedModel *bed = item;
         [DataCenter shareInstance].connectedBed = bed;
         [BLEManager shareInstance].mode = bed.mode;
         if (bed.mode == PillowNormal) {
@@ -306,6 +353,10 @@
 
 - (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {
     return 10;
+}
+
+- (void)backToPreviousPage {
+    [self.navigationController popViewControllerAnimated:YES];
 }
 
 @end

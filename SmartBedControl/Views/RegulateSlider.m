@@ -61,8 +61,8 @@
 
     // 滑块：左边距 SCALE(35)，右边距 SCALE(55)，两端留出标签空间
     self.slider = [[UISlider alloc] initWithFrame:CGRectMake(SCALE(35), CGRectGetMaxY(self.partLabel.frame) + 8, viewW - SCALE(90), 16)];
-    [self.slider setMaximumTrackImage:maxImage forState:UIControlStateNormal];
-    [self.slider setMinimumTrackImage:minImage forState:UIControlStateNormal];
+    [self.slider setMaximumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#ffffff" alpha:0.06]] forState:UIControlStateNormal];
+    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#ef4444"]] forState:UIControlStateNormal];
     [self.slider setThumbImage:[UIImage imageNamed:@"sliderPoint"] forState:UIControlStateNormal];
     [self.slider addTarget:self action:@selector(levelChanged:) forControlEvents:UIControlEventValueChanged];
     [self.slider addTarget:self action:@selector(levelChangeEnd:) forControlEvents:UIControlEventTouchUpInside];
@@ -80,15 +80,27 @@
     self.slider.frame = CGRectMake(SCALE(35), CGRectGetMaxY(self.partLabel.frame) + 8, viewW - SCALE(90), 16);
 }
 
+- (UIImage *)sliderTrackImageWithColor:(UIColor *)color
+{
+    CGRect rect = CGRectMake(0, 0, 12, 8);
+    UIGraphicsBeginImageContextWithOptions(rect.size, NO, 0);
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:4.0];
+    [color setFill];
+    [path fill];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return [image resizableImageWithCapInsets:UIEdgeInsetsMake(0, 4, 0, 4)];
+}
+
 // 根据视觉硬度返回对应颜色：低值偏软为绿，中间为蓝，高值偏硬为红
 - (UIColor *)colorForValue:(int)v
 {
     if (v <= 33) {
-        return [UIColor colorWithValue:@"#00FF87"];
+        return [UIColor colorWithValue:@"#ef4444"];
     } else if (v <= 66) {
         return [UIColor colorWithValue:@"#00d4ff"];
     } else {
-        return [UIColor colorWithValue:@"#ef4444"];
+        return [UIColor colorWithValue:@"#00FF87"];
     }
 }
 
@@ -100,6 +112,7 @@
     UIColor *color = [self colorForValue:value];
     _valueLabel.textColor = color;
     _dotView.backgroundColor = color;
+    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:color] forState:UIControlStateNormal];
 }
 
 - (void)setTitle:(NSString *)title
@@ -116,6 +129,7 @@
     _valueLabel.text = [NSString stringWithFormat:@"%d", current];
     _valueLabel.textColor = color;
     _dotView.backgroundColor = color;
+    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:color] forState:UIControlStateNormal];
 }
 
 // 滑动结束：触感反馈 + 通知代理

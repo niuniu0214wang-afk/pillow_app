@@ -53,15 +53,15 @@
 - (void)loadDayData:(void(^)(SleepDayData *data))completion {
     // ── MOCK DATA ──────────────────────────────────────────────
     SleepDayData *mock = [[SleepDayData alloc] init];
-    mock.score            = 84;
+    mock.score            = 77;
     mock.qualityPercent   = 56;
     mock.comparePercent   = 86;
-    mock.durationText     = @"8h34m";
+    mock.durationText     = @"8h 34m";
     mock.restingHeartRate = 61;
     mock.turnOverCount    = 16;
     mock.sitUpCount       = 3;
     mock.autoAdjustCount  = 22;
-    mock.sleepStages      = @[@4,@4,@2,@1,@2,@3,@4,@4,@4,@4,@3,@4,@4,@2,@3,@1,@3,@3,@4,@4,@3,@3,@2,@1];
+    mock.sleepStages      = @[@3,@3,@2,@2,@4,@3,@2,@2,@3,@3,@2,@1,@2,@2,@3,@2,@4,@2,@3,@2];
     // ── END MOCK ───────────────────────────────────────────────
     if (completion) completion(mock);
 }
@@ -338,7 +338,7 @@
     CGFloat stageBarW = 12.0;
     CGFloat stageTotalW = stageBarW * 24;
     CGFloat stageStartX = (iPhoneWidth - stageTotalW) / 2.0;
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < day.sleepStages.count; i++) {
         SleepView *sleep = [[SleepView alloc] init];
         sleep.frame = CGRectMake(stageStartX + i * stageBarW, stageY + 22, stageBarW - 1, 80);
         sleep.level = [day.sleepStages[i] intValue];
