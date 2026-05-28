@@ -1,0 +1,28 @@
+//
+//  PrefixHeader.pch
+//  SmartBedControl
+//
+//  Created by 刘飞 on 2026/3/2.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+
+#import "UIColor+ColorValue.h"
+#import "EonDefine.h"
+#import "HttpHerder.h"
+#import "ScreenUtils.h"
+#import "ToolHexManager.h"
+#import "DeviceManager.h"
+#import "ControlCenter.h"
+#import "BLEManager.h"
+#import "MJProgressHUD.h"
+#import "MBProgressHUD.h"
+#import "../data/BedModel.h"
+#import "../data/PersonModel.h"
+#import "DataCenter.h"
+#import "QuickTools.h"
+#import "HttpClient.h"
+#import "SmartBedControl-Swift.h"
+#endif /* PrefixHeader_pch */
