@@ -104,6 +104,9 @@
 
 @property (strong, nonatomic) NSArray *partArr;
 @property (strong, nonatomic) NSArray *progressArr; //进度条数组
+@property (strong, nonatomic) NSArray<UILabel *> *autoZoneStatusLabels;
+@property (strong, nonatomic) NSArray<UIView *> *autoZoneDots;
+@property (strong, nonatomic) NSArray<UIView *> *autoZoneCards;
 
 
 @property (assign, nonatomic) BedMode connectedMode;    //连接设备的型号
@@ -364,14 +367,52 @@
     [self.autoModeView addSubview:bedImageView];
     
     
-    CGFloat progressBottom = CGRectGetMaxY(bedImageView.frame);
+    CGFloat zoneTop = CGRectGetMaxY(bedImageView.frame) + 12;
+    NSInteger zoneColumns = _partArr.count <= 3 ? 3 : 3;
+    CGFloat zoneGap = 8.0;
+    CGFloat zoneCardW = (iPhoneWidth - cardPad * 2 - zoneGap * (zoneColumns - 1)) / zoneColumns;
+    CGFloat zoneCardH = 62.0;
+    NSMutableArray *statusLabels = [NSMutableArray array];
+    NSMutableArray *statusDots = [NSMutableArray array];
+    NSMutableArray *zoneCards = [NSMutableArray array];
     for (int i = 0 ; i < _partArr.count; i++) {
-        RegulateProgress *porssess = _progressArr[i];
-        porssess.frame = CGRectMake(0, CGRectGetMaxY(bedImageView.frame) + i%_partArr.count * 40, iPhoneWidth, 40);
-        porssess.title = _partArr[i];
-        [self.autoModeView addSubview:porssess];
-        progressBottom = CGRectGetMaxY(porssess.frame);
+        NSInteger col = i % zoneColumns;
+        NSInteger row = i / zoneColumns;
+        UIView *zoneCard = [[UIView alloc] initWithFrame:CGRectMake(cardPad + col * (zoneCardW + zoneGap), zoneTop + row * (zoneCardH + zoneGap), zoneCardW, zoneCardH)];
+        zoneCard.backgroundColor = [UIColor colorWithValue:@"#eab308" alpha:0.10];
+        zoneCard.layer.cornerRadius = 14.0;
+        zoneCard.layer.masksToBounds = YES;
+        zoneCard.layer.borderWidth = 1.0;
+        zoneCard.layer.borderColor = [UIColor colorWithValue:@"#eab308" alpha:0.24].CGColor;
+        [self.autoModeView addSubview:zoneCard];
+        [zoneCards addObject:zoneCard];
+
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake((zoneCardW - 7) / 2.0, 10, 7, 7)];
+        dot.backgroundColor = [UIColor colorWithValue:@"#eab308"];
+        dot.layer.cornerRadius = 3.5;
+        [zoneCard addSubview:dot];
+        [statusDots addObject:dot];
+
+        UILabel *nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 23, zoneCardW - 8, 16)];
+        nameLabel.text = _partArr[i];
+        nameLabel.textColor = [UIColor colorWithValue:@"#d1d5db"];
+        nameLabel.textAlignment = NSTextAlignmentCenter;
+        nameLabel.font = [UIFont systemFontOfSize:11.0];
+        [zoneCard addSubview:nameLabel];
+
+        UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 40, zoneCardW - 8, 14)];
+        statusLabel.text = @"调节中";
+        statusLabel.textColor = [UIColor colorWithValue:@"#fde68a"];
+        statusLabel.textAlignment = NSTextAlignmentCenter;
+        statusLabel.font = [UIFont systemFontOfSize:10.0];
+        [zoneCard addSubview:statusLabel];
+        [statusLabels addObject:statusLabel];
     }
+    self.autoZoneStatusLabels = statusLabels.copy;
+    self.autoZoneDots = statusDots.copy;
+    self.autoZoneCards = zoneCards.copy;
+    NSInteger zoneRows = ceil((double)_partArr.count / (double)zoneColumns);
+    CGFloat progressBottom = zoneTop + zoneRows * zoneCardH + MAX(0, zoneRows - 1) * zoneGap;
 
     UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(cardPad, progressBottom + 12, iPhoneWidth - cardPad * 2, 42)];
     statusView.backgroundColor = [UIColor colorWithValue:@"#eab308" alpha:0.10];
@@ -1536,40 +1577,66 @@
         [prossess stop];
     }
     
+    NSInteger activeZoneIndex = NSNotFound;
     
     if (self.connectedMode == BedNormal) {
         if (part == 1) {
             [_shoulderProgress start];
+            activeZoneIndex = 0;
         }
         if (part == 3) {
             [_waistProgress start];
+            activeZoneIndex = 1;
         }
         if (part == 4) {
             [_hipProgress start];
+            activeZoneIndex = 2;
         }
     }else{
         
         
         if (part == 1) {
             [_shoulderProgress start];
+            activeZoneIndex = 0;
         }
         if (part == 2) {
             [_backProgress start];
+            activeZoneIndex = 1;
         }
         if (part == 3) {
             [_waistProgress start];
+            activeZoneIndex = 2;
         }
         if (part == 4) {
             [_hipProgress start];
+            activeZoneIndex = 3;
         }
         if (part == 5) {
             [_thighProgress start];
+            activeZoneIndex = 4;
         }
         if (part == 6) {
             [_calfProgress start];
+            activeZoneIndex = 5;
         }
     }
+    [self updateAutoZoneStatusAtIndex:activeZoneIndex];
     
+}
+
+- (void)updateAutoZoneStatusAtIndex:(NSInteger)activeIndex
+{
+    for (NSInteger i = 0; i < self.autoZoneStatusLabels.count; i++) {
+        BOOL active = i == activeIndex;
+        UILabel *label = self.autoZoneStatusLabels[i];
+        UIView *dot = self.autoZoneDots[i];
+        UIView *card = self.autoZoneCards[i];
+        label.text = active ? @"调节中" : @"调节完毕";
+        label.textColor = active ? [UIColor colorWithValue:@"#fde68a"] : [UIColor colorWithValue:@"#22c55e"];
+        dot.backgroundColor = active ? [UIColor colorWithValue:@"#eab308"] : [UIColor colorWithValue:@"#22c55e"];
+        card.backgroundColor = active ? [UIColor colorWithValue:@"#eab308" alpha:0.10] : [UIColor colorWithValue:@"#22c55e" alpha:0.10];
+        card.layer.borderColor = (active ? [UIColor colorWithValue:@"#eab308" alpha:0.24] : [UIColor colorWithValue:@"#22c55e" alpha:0.24]).CGColor;
+    }
 }
 
 
