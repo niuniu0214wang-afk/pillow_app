@@ -12,6 +12,8 @@
 #import "../pages/DeviceModeController.h"
 #import "../pages/MainController.h"
 #import "../pages/PillowController.h"
+#import "../login/LoginController.h"
+#import "../login/LoginNavController.h"
 
 typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     MJProfileDetailTypeDevice,
@@ -33,6 +35,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, copy) NSString *dndEnd;
 @property (nonatomic, assign) BOOL alarmEnabled;
 @property (nonatomic, copy) NSString *alarmTime;
+@property (nonatomic, strong) NSMutableSet<NSNumber *> *alarmRepeatDays;
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) NSMutableArray<UILabel *> *helpAnswerLabels;
 @property (nonatomic, strong) NSMutableArray<UIView *> *helpAnswerCards;
@@ -241,6 +244,8 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     cell.titleLabel.text = dict[@"title"];
     cell.detailLabel.text = dict[@"detail"];
     cell.icon.image = [UIImage imageNamed:dict[@"image"]];
+    cell.prefersLargeIcon = (indexPath.section == 0);
+    [cell setNeedsLayout];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;
 }
@@ -262,18 +267,21 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     UIImageView *userImage = [[UIImageView alloc] init];
     userImage.image = [UIImage imageNamed:@"user"];
     userImage.frame = CGRectMake(20, 20, 64, 64);
+    userImage.contentMode = UIViewContentModeScaleAspectFill;
     userImage.layer.cornerRadius = 32.0;
     userImage.layer.masksToBounds = YES;
     [view addSubview:userImage];
 
-    UILabel *nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(userImage.frame) + 10, 20, 100, 25)];
+    CGFloat profileTextX = CGRectGetMaxX(userImage.frame) + 12;
+    CGFloat profileTextW = view.frame.size.width - profileTextX - 20;
+    UILabel *nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(profileTextX, 26, profileTextW, 24)];
     nameLabel.textColor = [UIColor whiteColor];
-    nameLabel.font = [UIFont systemFontOfSize:20.0];
+    nameLabel.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightMedium];
     nameLabel.textAlignment = NSTextAlignmentLeft;
     nameLabel.text = @"用户";
     [view addSubview:nameLabel];
 
-    UILabel *nickNameLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(userImage.frame) + 10, 46, 160, 25)];
+    UILabel *nickNameLabel = [[UILabel alloc] initWithFrame:CGRectMake(profileTextX, 51, profileTextW, 20)];
     nickNameLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
     nickNameLabel.font = [UIFont systemFontOfSize:14.0];
     nickNameLabel.textAlignment = NSTextAlignmentLeft;
@@ -397,7 +405,16 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"退出登录" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        [self.navigationController popToRootViewControllerAnimated:YES];
+        UIWindowScene *windowScene = (UIWindowScene *)self.view.window.windowScene;
+        if (windowScene) {
+            UIWindow *window = self.view.window ?: [[UIWindow alloc] initWithWindowScene:windowScene];
+            LoginController *loginVC = [[LoginController alloc] init];
+            LoginNavController *loginNav = [[LoginNavController alloc] initWithRootViewController:loginVC];
+            window.rootViewController = loginNav;
+            [window makeKeyAndVisible];
+        } else {
+            [self.navigationController popToRootViewControllerAnimated:YES];
+        }
     }]];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -434,6 +451,12 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     self.dndEnd = [defaults objectForKey:@"mattress_dnd_end"] ?: @"06:00";
     self.alarmEnabled = [defaults objectForKey:@"body_alarm_enabled"] ? [defaults boolForKey:@"body_alarm_enabled"] : YES;
     self.alarmTime = [defaults objectForKey:@"body_alarm_time"] ?: @"07:30";
+    NSArray *savedRepeatDays = [defaults objectForKey:@"body_alarm_repeat_days"];
+    if (savedRepeatDays.count > 0) {
+        self.alarmRepeatDays = [NSMutableSet setWithArray:savedRepeatDays];
+    } else {
+        self.alarmRepeatDays = [NSMutableSet setWithArray:@[@1, @2, @3, @4, @5]];
+    }
 }
 
 - (void)buildItems
@@ -654,7 +677,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 
 - (void)buildAlarmUIInScrollView:(UIScrollView *)scrollView
 {
-    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, 0, iPhoneWidth - 40, 210)];
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, 0, iPhoneWidth - 40, 254)];
     card.backgroundColor = [UIColor colorWithValue:@"#111111"];
     card.layer.cornerRadius = 18.0;
     card.layer.masksToBounds = YES;
@@ -677,12 +700,30 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     [card addSubview:timeBtn];
 
     UILabel *repeat = [[UILabel alloc] initWithFrame:CGRectMake(18, 132, card.bounds.size.width - 36, 20)];
-    repeat.text = @"重复  周一 至 周五";
+    repeat.tag = 8801;
+    repeat.text = [NSString stringWithFormat:@"重复  %@", [self alarmRepeatSummary]];
     repeat.textColor = [UIColor colorWithValue:@"#9ca3af"];
     repeat.font = [UIFont systemFontOfSize:13.0];
     [card addSubview:repeat];
 
-    UILabel *mode = [[UILabel alloc] initWithFrame:CGRectMake(18, 160, card.bounds.size.width - 36, 20)];
+    NSArray<NSString *> *days = @[@"日", @"一", @"二", @"三", @"四", @"五", @"六"];
+    CGFloat chipGap = 8.0;
+    CGFloat chipWidth = floor((card.bounds.size.width - 36 - chipGap * 6) / 7.0);
+    CGFloat chipY = 160.0;
+    for (NSInteger i = 0; i < days.count; i++) {
+        UIButton *dayButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        dayButton.frame = CGRectMake(18 + i * (chipWidth + chipGap), chipY, chipWidth, 34);
+        dayButton.tag = 8900 + i;
+        dayButton.layer.cornerRadius = 10.0;
+        dayButton.layer.masksToBounds = YES;
+        dayButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+        [dayButton setTitle:[NSString stringWithFormat:@"周%@", days[i]] forState:UIControlStateNormal];
+        [dayButton addTarget:self action:@selector(alarmDayTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [card addSubview:dayButton];
+        [self updateAlarmDayButton:dayButton selected:[self.alarmRepeatDays containsObject:@(i)]];
+    }
+
+    UILabel *mode = [[UILabel alloc] initWithFrame:CGRectMake(18, 208, card.bounds.size.width - 36, 20)];
     mode.text = @"唤醒方式  体感调节唤醒";
     mode.textColor = [UIColor colorWithValue:@"#6b7280"];
     mode.font = [UIFont systemFontOfSize:13.0];
@@ -927,6 +968,23 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+- (void)alarmDayTapped:(UIButton *)sender
+{
+    NSNumber *dayNumber = @(sender.tag - 8900);
+    if ([self.alarmRepeatDays containsObject:dayNumber]) {
+        [self.alarmRepeatDays removeObject:dayNumber];
+    } else {
+        [self.alarmRepeatDays addObject:dayNumber];
+    }
+
+    [self updateAlarmDayButton:sender selected:[self.alarmRepeatDays containsObject:dayNumber]];
+    UILabel *repeatLabel = [self.contentScrollView viewWithTag:8801];
+    repeatLabel.text = [NSString stringWithFormat:@"重复  %@", [self alarmRepeatSummary]];
+    NSArray *sortedDays = [[self.alarmRepeatDays allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    [[NSUserDefaults standardUserDefaults] setObject:sortedDays forKey:@"body_alarm_repeat_days"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 - (void)helpFaqTapped:(UIButton *)sender
 {
     NSInteger index = sender.tag - 900;
@@ -1045,6 +1103,41 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
         return @"此页对应网页原型中床垫的自动调节模式和勿动模式，和枕头的高度/鼾声功能分开。";
     }
     return @"该页面已按网页原型拆成独立二级界面，后续可继续接入真实接口和持久化设置。";
+}
+
+- (void)updateAlarmDayButton:(UIButton *)button selected:(BOOL)selected
+{
+    button.backgroundColor = selected ? [UIColor colorWithValue:@"#00d4ff" alpha:0.14] : [UIColor colorWithValue:@"#1a1a1a"];
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = (selected ? [UIColor colorWithValue:@"#00d4ff" alpha:0.45] : [UIColor colorWithValue:@"#27272a"]).CGColor;
+    [button setTitleColor:(selected ? [UIColor colorWithValue:@"#00d4ff"] : [UIColor colorWithValue:@"#9ca3af"]) forState:UIControlStateNormal];
+}
+
+- (NSString *)alarmRepeatSummary
+{
+    NSArray<NSNumber *> *sortedDays = [[self.alarmRepeatDays allObjects] sortedArrayUsingSelector:@selector(compare:)];
+    if (sortedDays.count == 0) {
+        return @"不重复";
+    }
+    if ([sortedDays isEqualToArray:@[@1, @2, @3, @4, @5]]) {
+        return @"周一 至 周五";
+    }
+    if ([sortedDays isEqualToArray:@[@0, @6]]) {
+        return @"周末";
+    }
+    if (sortedDays.count == 7) {
+        return @"每天";
+    }
+
+    NSArray<NSString *> *labels = @[@"周日", @"周一", @"周二", @"周三", @"周四", @"周五", @"周六"];
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (NSNumber *day in sortedDays) {
+        NSInteger index = day.integerValue;
+        if (index >= 0 && index < labels.count) {
+            [parts addObject:labels[index]];
+        }
+    }
+    return [parts componentsJoinedByString:@"、"];
 }
 
 - (void)back

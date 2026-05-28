@@ -21,7 +21,7 @@
 
 @implementation BLEManager
 
-+ (id)shareInstance
++ (instancetype)shareInstance
 {
     static BLEManager *bleManager;
     static dispatch_once_t oneceToken;

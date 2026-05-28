@@ -10,7 +10,7 @@
 @implementation ControlCenter
 
 
-+ (id)shareInstance
++ (instancetype)shareInstance
 {
     static ControlCenter *dataManager;
     static dispatch_once_t oneceToken;
@@ -1289,4 +1289,3 @@
 
 
 @end
-

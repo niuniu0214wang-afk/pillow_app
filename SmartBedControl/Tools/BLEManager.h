@@ -56,7 +56,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (strong, nonatomic) NSString *deviceName; //添加蓝牙时扫描的蓝牙名称
 
-+ (id)shareInstance;
++ (instancetype)shareInstance;
 
 //搜索设备
 - (void)didStartScanDevice:(BOOL)isAdd;

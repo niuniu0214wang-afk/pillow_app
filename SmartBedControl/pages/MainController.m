@@ -110,9 +110,16 @@
 @property (strong, nonatomic) NSArray<UIView *> *autoZoneCards;
 @property (strong, nonatomic) NSArray<UILabel *> *autoModeTimeLabels;
 @property (strong, nonatomic) NSArray<UIButton *> *autoModeCards;
+@property (strong, nonatomic) NSMutableArray<NSNumber *> *autoModeDurations;
+@property (strong, nonatomic) NSArray<UIButton *> *autoModeMinusButtons;
+@property (strong, nonatomic) NSArray<UIButton *> *autoModePlusButtons;
 @property (strong, nonatomic) NSTimer *autoModeCountdownTimer;
 @property (assign, nonatomic) NSInteger autoModeCountdownSeconds;
 @property (assign, nonatomic) NSInteger activeAutoModeIndex;
+@property (strong, nonatomic) UIView *autoAdaptiveStatusView;
+@property (strong, nonatomic) UIView *autoAdaptiveStatusDot;
+@property (strong, nonatomic) UILabel *autoAdaptiveStatusLabel;
+@property (assign, nonatomic) BOOL autoAdaptiveModeActive;
 
 
 @property (assign, nonatomic) BedMode connectedMode;    //连接设备的型号
@@ -123,6 +130,7 @@
 @property (strong, nonatomic) UIView *manualControlPanel;
 @property (strong, nonatomic) UIView *manualAdjustingOverlay;
 @property (strong, nonatomic) NSTimer *manualAdjustingTimer;
+@property (assign, nonatomic) BOOL hasAppliedInitialEntryMode;
 
 @end
 
@@ -416,10 +424,11 @@
         [zoneCard addSubview:nameLabel];
 
         UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 40, zoneCardW - 8, 14)];
-        statusLabel.text = @"调节中";
+        statusLabel.text = @"";
         statusLabel.textColor = [UIColor colorWithValue:@"#fde68a"];
         statusLabel.textAlignment = NSTextAlignmentCenter;
         statusLabel.font = [UIFont systemFontOfSize:10.0];
+        statusLabel.hidden = YES;
         [zoneCard addSubview:statusLabel];
         [statusLabels addObject:statusLabel];
     }
@@ -430,24 +439,23 @@
     CGFloat progressBottom = zoneTop + zoneRows * zoneCardH + MAX(0, zoneRows - 1) * zoneGap;
 
     UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(cardPad, progressBottom + 12, iPhoneWidth - cardPad * 2, 42)];
-    statusView.backgroundColor = [UIColor colorWithValue:@"#eab308" alpha:0.10];
     statusView.layer.cornerRadius = 14.0;
     statusView.layer.masksToBounds = YES;
     statusView.layer.borderWidth = 1.0;
-    statusView.layer.borderColor = [UIColor colorWithValue:@"#eab308" alpha:0.22].CGColor;
     [self.autoModeView addSubview:statusView];
+    self.autoAdaptiveStatusView = statusView;
 
     UIView *adjustDot = [[UIView alloc] initWithFrame:CGRectMake(18, 17, 8, 8)];
-    adjustDot.backgroundColor = [UIColor colorWithValue:@"#eab308"];
     adjustDot.layer.cornerRadius = 4.0;
     [statusView addSubview:adjustDot];
+    self.autoAdaptiveStatusDot = adjustDot;
 
     UILabel *statusText = [[UILabel alloc] initWithFrame:CGRectMake(34, 0, statusView.frame.size.width - 50, 42)];
-    statusText.text = @"调节中";
-    statusText.textColor = [UIColor colorWithValue:@"#fde68a"];
+    statusText.text = @"自适应调节中";
     statusText.textAlignment = NSTextAlignmentCenter;
     statusText.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
     [statusView addSubview:statusText];
+    self.autoAdaptiveStatusLabel = statusText;
 
     UILabel *modeTitle = [[UILabel alloc] initWithFrame:CGRectMake(cardPad, CGRectGetMaxY(statusView.frame) + 16, iPhoneWidth - cardPad * 2, 18)];
     modeTitle.text = @"自动功能";
@@ -467,6 +475,9 @@
     CGFloat autoCardH = 86.0;
     NSMutableArray *autoTimeLabels = [NSMutableArray array];
     NSMutableArray *autoModeCards = [NSMutableArray array];
+    NSMutableArray *autoMinusButtons = [NSMutableArray array];
+    NSMutableArray *autoPlusButtons = [NSMutableArray array];
+    self.autoModeDurations = [NSMutableArray array];
     for (int i = 0; i < autoModes.count; i++) {
         NSDictionary *dict = autoModes[i];
         NSInteger col = i % 2;
@@ -506,25 +517,51 @@
         desc.font = [UIFont systemFontOfSize:10.0];
         [modeCard addSubview:desc];
 
-        UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(14, 58, autoCardW - 28, 18)];
+        UIButton *minusButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        minusButton.frame = CGRectMake(14, 56, 22, 22);
+        minusButton.tag = 320 + i;
+        minusButton.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+        [minusButton setTitle:@"-" forState:UIControlStateNormal];
+        [minusButton setTitleColor:[UIColor colorWithValue:@"#9ca3af"] forState:UIControlStateNormal];
+        [minusButton setTitleColor:[UIColor colorWithValue:@"#4b5563"] forState:UIControlStateDisabled];
+        [minusButton addTarget:self action:@selector(autoModeMinusTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [modeCard addSubview:minusButton];
+        [autoMinusButtons addObject:minusButton];
+
+        UIButton *plusButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        plusButton.frame = CGRectMake(autoCardW - 36, 56, 22, 22);
+        plusButton.tag = 360 + i;
+        plusButton.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+        [plusButton setTitle:@"+" forState:UIControlStateNormal];
+        [plusButton setTitleColor:[UIColor colorWithValue:@"#9ca3af"] forState:UIControlStateNormal];
+        [plusButton addTarget:self action:@selector(autoModePlusTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [modeCard addSubview:plusButton];
+        [autoPlusButtons addObject:plusButton];
+
+        UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(40, 58, autoCardW - 80, 18)];
         timeLabel.text = @"15 min";
-        timeLabel.textAlignment = NSTextAlignmentRight;
+        timeLabel.textAlignment = NSTextAlignmentCenter;
         timeLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
         timeLabel.font = [UIFont systemFontOfSize:11.0];
         [modeCard addSubview:timeLabel];
         [autoTimeLabels addObject:timeLabel];
+        [self.autoModeDurations addObject:@15];
     }
     self.autoModeTimeLabels = autoTimeLabels.copy;
     self.autoModeCards = autoModeCards.copy;
+    self.autoModeMinusButtons = autoMinusButtons.copy;
+    self.autoModePlusButtons = autoPlusButtons.copy;
     self.activeAutoModeIndex = -1;
+    [self activateAdaptiveAutoMode];
 
     autoScrollView.contentSize = CGSizeMake(0, autoGridTop + autoCardH * 2 + cardGap + 24);
-    self.autoModeView.hidden = YES;
+    self.autoModeView.hidden = NO;
     
   //**********************************手动调节******************************
     self.handModeView = [[UIScrollView alloc] initWithFrame:self.autoModeView.frame];
     self.handModeView.backgroundColor = [UIColor clearColor];
     self.handModeView.contentSize = CGSizeMake(0, 700);
+    self.handModeView.hidden = YES;
     [self.view addSubview:self.handModeView];
     
     if (self.connectedMode == BedPro) {
@@ -532,8 +569,89 @@
     }
 
     CGFloat manualPad = SCALE(20);
+    CGFloat metricCardGap = 10.0;
+    CGFloat metricCardW = (iPhoneWidth - manualPad * 2 - metricCardGap) / 2.0;
+
+    UIView *manualHeartRateView = [[UIView alloc] initWithFrame:CGRectMake(manualPad, 0, metricCardW, 88)];
+    manualHeartRateView.layer.cornerRadius = 16.0;
+    manualHeartRateView.layer.masksToBounds = YES;
+    manualHeartRateView.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.06].CGColor;
+    manualHeartRateView.layer.borderWidth = 1.0;
+    CAGradientLayer *manualHeartGrad = [CAGradientLayer layer];
+    manualHeartGrad.colors = @[(id)[UIColor colorWithValue:@"#ffffff" alpha:0.04].CGColor,
+                               (id)[UIColor colorWithValue:@"#ffffff" alpha:0.01].CGColor];
+    manualHeartGrad.startPoint = CGPointMake(0, 0);
+    manualHeartGrad.endPoint = CGPointMake(1, 1);
+    manualHeartGrad.frame = CGRectMake(0, 0, metricCardW, 88);
+    [manualHeartRateView.layer insertSublayer:manualHeartGrad atIndex:0];
+    [self.handModeView addSubview:manualHeartRateView];
+
+    UIImageView *manualHeartImage = [[UIImageView alloc] initWithFrame:CGRectMake(16, 16, 14, 14)];
+    manualHeartImage.image = [[UIImage imageNamed:@"heart"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    manualHeartImage.tintColor = [UIColor colorWithValue:@"#f87171"];
+    [manualHeartRateView addSubview:manualHeartImage];
+
+    UILabel *manualHeartLabel1 = [[UILabel alloc] initWithFrame:CGRectMake(34, 14, metricCardW - 40, 16)];
+    manualHeartLabel1.font = [UIFont systemFontOfSize:11.0];
+    manualHeartLabel1.textColor = [UIColor colorWithValue:@"#6b7280"];
+    manualHeartLabel1.text = @"心率";
+    [manualHeartRateView addSubview:manualHeartLabel1];
+
+    UILabel *manualHeartNumberLabel = [[UILabel alloc] init];
+    manualHeartNumberLabel.text = @"68";
+    manualHeartNumberLabel.font = [UIFont systemFontOfSize:28.0 weight:UIFontWeightUltraLight];
+    manualHeartNumberLabel.textColor = [UIColor whiteColor];
+    [manualHeartNumberLabel sizeToFit];
+    manualHeartNumberLabel.frame = CGRectMake(16, 36, manualHeartNumberLabel.bounds.size.width, manualHeartNumberLabel.bounds.size.height);
+    [manualHeartRateView addSubview:manualHeartNumberLabel];
+
+    UILabel *manualHeartLabel2 = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(manualHeartNumberLabel.frame) + 4, 50, 40, 16)];
+    manualHeartLabel2.font = [UIFont systemFontOfSize:11.0];
+    manualHeartLabel2.textColor = [UIColor colorWithValue:@"#6b7280"];
+    manualHeartLabel2.text = @"BPM";
+    [manualHeartRateView addSubview:manualHeartLabel2];
+
+    UIView *manualBreatheView = [[UIView alloc] initWithFrame:CGRectMake(manualPad + metricCardW + metricCardGap, 0, metricCardW, 88)];
+    manualBreatheView.layer.cornerRadius = 16.0;
+    manualBreatheView.layer.masksToBounds = YES;
+    manualBreatheView.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.06].CGColor;
+    manualBreatheView.layer.borderWidth = 1.0;
+    CAGradientLayer *manualBreathGrad = [CAGradientLayer layer];
+    manualBreathGrad.colors = @[(id)[UIColor colorWithValue:@"#ffffff" alpha:0.04].CGColor,
+                                (id)[UIColor colorWithValue:@"#ffffff" alpha:0.01].CGColor];
+    manualBreathGrad.startPoint = CGPointMake(0, 0);
+    manualBreathGrad.endPoint = CGPointMake(1, 1);
+    manualBreathGrad.frame = CGRectMake(0, 0, metricCardW, 88);
+    [manualBreatheView.layer insertSublayer:manualBreathGrad atIndex:0];
+    [self.handModeView addSubview:manualBreatheView];
+
+    UIImageView *manualBreathImage = [[UIImageView alloc] initWithFrame:CGRectMake(16, 16, 14, 14)];
+    manualBreathImage.image = [[UIImage imageNamed:@"breath"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    manualBreathImage.tintColor = [UIColor colorWithValue:@"#60a5fa"];
+    [manualBreatheView addSubview:manualBreathImage];
+
+    UILabel *manualBreathLabel1 = [[UILabel alloc] initWithFrame:CGRectMake(34, 14, metricCardW - 40, 16)];
+    manualBreathLabel1.font = [UIFont systemFontOfSize:11.0];
+    manualBreathLabel1.textColor = [UIColor colorWithValue:@"#6b7280"];
+    manualBreathLabel1.text = @"呼吸频率";
+    [manualBreatheView addSubview:manualBreathLabel1];
+
+    UILabel *manualBreathNumberLabel = [[UILabel alloc] init];
+    manualBreathNumberLabel.text = @"16";
+    manualBreathNumberLabel.font = [UIFont systemFontOfSize:28.0 weight:UIFontWeightUltraLight];
+    manualBreathNumberLabel.textColor = [UIColor whiteColor];
+    [manualBreathNumberLabel sizeToFit];
+    manualBreathNumberLabel.frame = CGRectMake(16, 36, manualBreathNumberLabel.bounds.size.width, manualBreathNumberLabel.bounds.size.height);
+    [manualBreatheView addSubview:manualBreathNumberLabel];
+
+    UILabel *manualBreathLabel2 = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(manualBreathNumberLabel.frame) + 4, 50, 40, 16)];
+    manualBreathLabel2.font = [UIFont systemFontOfSize:11.0];
+    manualBreathLabel2.textColor = [UIColor colorWithValue:@"#6b7280"];
+    manualBreathLabel2.text = @"次/分";
+    [manualBreatheView addSubview:manualBreathLabel2];
+
     CGFloat manualCardH = 252.0;
-    _manualCardView = [[UIView alloc] initWithFrame:CGRectMake(manualPad, 0, iPhoneWidth - manualPad * 2, manualCardH)];
+    _manualCardView = [[UIView alloc] initWithFrame:CGRectMake(manualPad, CGRectGetMaxY(manualHeartRateView.frame) + 14, iPhoneWidth - manualPad * 2, manualCardH)];
     _manualCardView.layer.cornerRadius = 18.0;
     _manualCardView.layer.masksToBounds = YES;
     _manualCardView.layer.borderWidth = 1.0;
@@ -852,17 +970,26 @@
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context
 {
     [MBProgressHUD hideHUDForView:self.view animated:YES];
-    if ([keyPath isEqualToString:@"respondDict"]) {
-        NSDictionary *dict = change[@"new"];
-        NSString *code = dict[@"code"];
-        if ([code isEqualToString:@"e0"]) {
-            self.leftMode = dict[@"letfMode"];
-            self.rightMode = dict[@"rightMode"];
-            if ([self.leftMode isEqualToString:@"01"]) {
-                _isAuto = NO;
-                NSData *data = [ControlCenter getBodyHardness:_side person:@"01"];
-                [_bleManager didSendMessageToDevice:data];
-                _handBtn.selected = YES;
+        if ([keyPath isEqualToString:@"respondDict"]) {
+            NSDictionary *dict = change[@"new"];
+            NSString *code = dict[@"code"];
+            if ([code isEqualToString:@"e0"]) {
+                self.leftMode = dict[@"letfMode"];
+                self.rightMode = dict[@"rightMode"];
+                if (!self.hasAppliedInitialEntryMode) {
+                    self.hasAppliedInitialEntryMode = YES;
+                    _isAuto = YES;
+                    _handBtn.selected = NO;
+                    _autoBtn.selected = YES;
+                    [self switchContentToAuto:YES];
+                    [self activateAdaptiveAutoMode];
+                    return;
+                }
+                if ([self.leftMode isEqualToString:@"01"]) {
+                    _isAuto = NO;
+                    NSData *data = [ControlCenter getBodyHardness:_side person:@"01"];
+                    [_bleManager didSendMessageToDevice:data];
+                    _handBtn.selected = YES;
                 _autoBtn.selected = NO;
                 [self switchContentToAuto:NO];
             } else if ([self.leftMode isEqualToString:@"02"] || [self.leftMode isEqualToString:@"05"]) {
@@ -870,9 +997,11 @@
                 _handBtn.selected = NO;
                 _autoBtn.selected = YES;
                 [self switchContentToAuto:YES];
+                [self activateAdaptiveAutoMode];
             } else {
                 _isAuto = YES;
                 [self switchContentToAuto:YES];
+                [self activateAdaptiveAutoMode];
             }
         } else if ([code isEqualToString:@"e1"]) {
             NSString *respond = dict[@"respond"];
@@ -1029,6 +1158,7 @@
             _handBtn.selected = NO;
             _autoBtn.selected = [_leftMode isEqualToString:@"02"];
             [self switchContentToAuto:YES];
+            [self activateAdaptiveAutoMode];
         }
     }
     if (btn == _rightBtn) {
@@ -1048,6 +1178,7 @@
             _handBtn.selected = NO;
             _autoBtn.selected = [_rightMode isEqualToString:@"02"];
             [self switchContentToAuto:YES];
+            [self activateAdaptiveAutoMode];
         }
     }
 }
@@ -1061,6 +1192,7 @@
     _handBtn.selected = NO;
     _isAuto = YES;
     [self switchContentToAuto:YES];
+    [self activateAdaptiveAutoMode];
     NSData *data = [ControlCenter adjustType:@"02" bedSide:_side];
     [_bleManager didSendMessageToDevice:data];
 }
@@ -1101,7 +1233,12 @@
 - (void)modeChanged:(UIButton *)btn
 {
     NSInteger tag = btn.tag - 260;
-    [self startAutoModeCountdownAtIndex:tag minutes:15];
+    if (self.activeAutoModeIndex == tag && self.autoModeCountdownSeconds > 0) {
+        [self activateAdaptiveAutoMode];
+        return;
+    }
+    NSInteger minutes = [self.autoModeDurations[tag] integerValue];
+    [self startAutoModeCountdownAtIndex:tag minutes:minutes];
 }
 
 - (void)modeTimeView:(ModeTimeView *)view doTimeLevel:(int)level
@@ -1111,6 +1248,11 @@
 
 - (void)startAutoModeCountdownAtIndex:(NSInteger)index minutes:(NSInteger)minutes
 {
+    NSInteger previousIndex = self.activeAutoModeIndex;
+    if (previousIndex >= 0 && previousIndex < self.autoModeDurations.count && previousIndex != index) {
+        self.autoModeDurations[previousIndex] = @15;
+    }
+    self.autoAdaptiveModeActive = NO;
     self.activeAutoModeIndex = index;
     self.autoModeCountdownSeconds = minutes * 60;
     [self.autoModeCountdownTimer invalidate];
@@ -1120,29 +1262,17 @@
 
 - (void)updateAutoModeCountdown
 {
-    for (NSInteger i = 0; i < self.autoModeCards.count; i++) {
-        UIButton *card = self.autoModeCards[i];
-        BOOL active = i == self.activeAutoModeIndex && self.autoModeCountdownSeconds > 0;
-        card.backgroundColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.10 : 0.03];
-        card.layer.borderColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.35 : 0.06].CGColor;
-    }
+    [self updateAdaptiveAutoUI];
+    [self updateAutoModeCardSelectionUI];
 
-    if (self.activeAutoModeIndex >= 0 && self.activeAutoModeIndex < self.autoModeTimeLabels.count) {
-        NSInteger minutes = MAX(0, self.autoModeCountdownSeconds) / 60;
-        NSInteger seconds = MAX(0, self.autoModeCountdownSeconds) % 60;
-        UILabel *label = self.autoModeTimeLabels[self.activeAutoModeIndex];
-        label.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)minutes, (long)seconds];
-        label.textColor = [UIColor colorWithValue:@"#00d4ff"];
+    for (NSInteger i = 0; i < self.autoModeTimeLabels.count; i++) {
+        [self updateAutoModeTimeDisplayAtIndex:i];
     }
 
     if (self.autoModeCountdownSeconds <= 0) {
         [self.autoModeCountdownTimer invalidate];
         self.autoModeCountdownTimer = nil;
-        self.activeAutoModeIndex = -1;
-        for (UILabel *label in self.autoModeTimeLabels) {
-            label.text = @"15 min";
-            label.textColor = [UIColor colorWithValue:@"#9ca3af"];
-        }
+        [self activateAdaptiveAutoMode];
         return;
     }
     self.autoModeCountdownSeconds -= 1;
@@ -1409,7 +1539,7 @@
         
         level = 1;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 85;
+            slider.value = 0;
         }
     }
     
@@ -1429,7 +1559,7 @@
 //        }];
         level = 3;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 0;
+            slider.value = 100;
         }
     }
     
@@ -1725,16 +1855,149 @@
 
 - (void)updateAutoZoneStatusAtIndex:(NSInteger)activeIndex
 {
-    for (NSInteger i = 0; i < self.autoZoneStatusLabels.count; i++) {
-        BOOL active = i == activeIndex;
-        UILabel *label = self.autoZoneStatusLabels[i];
-        UIView *dot = self.autoZoneDots[i];
-        UIView *card = self.autoZoneCards[i];
-        label.text = active ? @"调节中" : @"调节完毕";
-        label.textColor = active ? [UIColor colorWithValue:@"#fde68a"] : [UIColor colorWithValue:@"#22c55e"];
-        dot.backgroundColor = active ? [UIColor colorWithValue:@"#eab308"] : [UIColor colorWithValue:@"#22c55e"];
-        card.backgroundColor = active ? [UIColor colorWithValue:@"#eab308" alpha:0.10] : [UIColor colorWithValue:@"#22c55e" alpha:0.10];
-        card.layer.borderColor = (active ? [UIColor colorWithValue:@"#eab308" alpha:0.24] : [UIColor colorWithValue:@"#22c55e" alpha:0.24]).CGColor;
+    if (!self.autoAdaptiveModeActive) {
+        return;
+    }
+    [self updateAdaptiveAutoUI];
+    if (activeIndex < 0 || activeIndex >= self.autoZoneCards.count) {
+        return;
+    }
+    UIView *card = self.autoZoneCards[activeIndex];
+    UIView *dot = self.autoZoneDots[activeIndex];
+    [self setAutoZoneCard:card dot:dot on:YES highlighted:YES];
+    [self flashAutoZoneCard:card dot:dot];
+}
+
+- (void)activateAdaptiveAutoMode
+{
+    self.autoAdaptiveModeActive = YES;
+    if (self.activeAutoModeIndex >= 0 && self.activeAutoModeIndex < self.autoModeDurations.count) {
+        self.autoModeDurations[self.activeAutoModeIndex] = @15;
+    }
+    self.activeAutoModeIndex = -1;
+    self.autoModeCountdownSeconds = 0;
+    [self.autoModeCountdownTimer invalidate];
+    self.autoModeCountdownTimer = nil;
+    for (NSInteger i = 0; i < self.autoModeDurations.count; i++) {
+        self.autoModeDurations[i] = @15;
+        [self updateAutoModeTimeDisplayAtIndex:i];
+    }
+    [self updateAdaptiveAutoUI];
+    [self updateAutoModeCardSelectionUI];
+}
+
+- (void)updateAdaptiveAutoUI
+{
+    BOOL adaptiveOn = self.autoAdaptiveModeActive;
+    self.autoAdaptiveStatusView.backgroundColor = [UIColor colorWithValue:adaptiveOn ? @"#22c55e" : @"#ffffff" alpha:adaptiveOn ? 0.10 : 0.03];
+    self.autoAdaptiveStatusView.layer.borderColor = [UIColor colorWithValue:adaptiveOn ? @"#22c55e" : @"#ffffff" alpha:adaptiveOn ? 0.28 : 0.06].CGColor;
+    self.autoAdaptiveStatusDot.backgroundColor = [UIColor colorWithValue:adaptiveOn ? @"#22c55e" : @"#4b5563"];
+    self.autoAdaptiveStatusLabel.text = adaptiveOn ? @"自适应调节中" : @"自适应调节";
+    self.autoAdaptiveStatusLabel.textColor = [UIColor colorWithValue:adaptiveOn ? @"#bbf7d0" : @"#6b7280"];
+
+    for (NSInteger i = 0; i < self.autoZoneCards.count; i++) {
+        [self.autoZoneCards[i].layer removeAnimationForKey:@"autoZonePulse"];
+        [self.autoZoneDots[i].layer removeAnimationForKey:@"autoZonePulse"];
+        [self setAutoZoneCard:self.autoZoneCards[i] dot:self.autoZoneDots[i] on:adaptiveOn highlighted:NO];
+    }
+
+    for (NSInteger i = 0; i < self.autoModeMinusButtons.count; i++) {
+        UIButton *minusButton = self.autoModeMinusButtons[i];
+        NSInteger valueMinutes = 15;
+        if (self.activeAutoModeIndex == i && self.autoModeCountdownSeconds > 0) {
+            valueMinutes = MAX(15, (NSInteger)ceil(self.autoModeCountdownSeconds / 60.0));
+        } else if (i < self.autoModeDurations.count) {
+            valueMinutes = [self.autoModeDurations[i] integerValue];
+        }
+        minusButton.enabled = valueMinutes > 15;
+    }
+}
+
+- (void)updateAutoModeCardSelectionUI
+{
+    for (NSInteger i = 0; i < self.autoModeCards.count; i++) {
+        UIButton *card = self.autoModeCards[i];
+        BOOL active = i == self.activeAutoModeIndex && self.autoModeCountdownSeconds > 0;
+        card.backgroundColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.10 : 0.03];
+        card.layer.borderColor = [UIColor colorWithValue:active ? @"#00d4ff" : @"#ffffff" alpha:active ? 0.35 : 0.06].CGColor;
+    }
+}
+
+- (void)setAutoZoneCard:(UIView *)card dot:(UIView *)dot on:(BOOL)on highlighted:(BOOL)highlighted
+{
+    NSString *colorHex = highlighted ? @"#eab308" : (on ? @"#22c55e" : @"#4b5563");
+    CGFloat alpha = highlighted ? 0.12 : (on ? 0.10 : 0.03);
+    CGFloat borderAlpha = highlighted ? 0.28 : (on ? 0.24 : 0.08);
+    card.backgroundColor = [UIColor colorWithValue:colorHex alpha:alpha];
+    card.layer.borderColor = [UIColor colorWithValue:colorHex alpha:borderAlpha].CGColor;
+    dot.backgroundColor = [UIColor colorWithValue:colorHex];
+}
+
+- (void)flashAutoZoneCard:(UIView *)card dot:(UIView *)dot
+{
+    CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    pulse.fromValue = @1.0;
+    pulse.toValue = @0.35;
+    pulse.duration = 0.22;
+    pulse.autoreverses = YES;
+    pulse.repeatCount = 4;
+    [card.layer addAnimation:pulse forKey:@"autoZonePulse"];
+    [dot.layer addAnimation:pulse forKey:@"autoZonePulse"];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.95 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [card.layer removeAnimationForKey:@"autoZonePulse"];
+        [dot.layer removeAnimationForKey:@"autoZonePulse"];
+        if (self.autoAdaptiveModeActive) {
+            [self setAutoZoneCard:card dot:dot on:YES highlighted:NO];
+        }
+    });
+}
+
+- (void)autoModeMinusTapped:(UIButton *)sender
+{
+    NSInteger index = sender.tag - 320;
+    if (index < 0 || index >= self.autoModeTimeLabels.count) {
+        return;
+    }
+    if (self.activeAutoModeIndex == index && self.autoModeCountdownSeconds > 0) {
+        self.autoModeCountdownSeconds = MAX(15 * 60, self.autoModeCountdownSeconds - 5 * 60);
+    } else {
+        NSInteger minutes = MAX(15, [self.autoModeDurations[index] integerValue] - 5);
+        self.autoModeDurations[index] = @(minutes);
+    }
+    [self updateAutoModeCountdown];
+}
+
+- (void)autoModePlusTapped:(UIButton *)sender
+{
+    NSInteger index = sender.tag - 360;
+    if (index < 0 || index >= self.autoModeTimeLabels.count) {
+        return;
+    }
+    if (self.activeAutoModeIndex == index && self.autoModeCountdownSeconds > 0) {
+        self.autoModeCountdownSeconds += 5 * 60;
+    } else {
+        NSInteger minutes = [self.autoModeDurations[index] integerValue] + 5;
+        self.autoModeDurations[index] = @(minutes);
+    }
+    [self updateAutoModeCountdown];
+}
+
+- (void)updateAutoModeTimeDisplayAtIndex:(NSInteger)index
+{
+    if (index < 0 || index >= self.autoModeTimeLabels.count) {
+        return;
+    }
+    UILabel *label = self.autoModeTimeLabels[index];
+    if (self.activeAutoModeIndex == index && self.autoModeCountdownSeconds > 0) {
+        NSInteger minutes = MAX(0, self.autoModeCountdownSeconds) / 60;
+        NSInteger seconds = MAX(0, self.autoModeCountdownSeconds) % 60;
+        label.text = [NSString stringWithFormat:@"%02ld:%02ld", (long)minutes, (long)seconds];
+        label.textColor = [UIColor colorWithValue:@"#00d4ff"];
+    } else {
+        NSInteger minutes = index < self.autoModeDurations.count ? [self.autoModeDurations[index] integerValue] : 15;
+        label.text = [NSString stringWithFormat:@"%ld min", (long)minutes];
+        label.textColor = [UIColor colorWithValue:@"#9ca3af"];
     }
 }
 

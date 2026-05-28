@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (weak, nonatomic) IBOutlet UIImageView *icon;
 @property (weak, nonatomic) IBOutlet UILabel *titleLabel;
 @property (weak, nonatomic) IBOutlet UILabel *detailLabel;
+@property (assign, nonatomic) BOOL prefersLargeIcon;
 @end
 
 NS_ASSUME_NONNULL_END

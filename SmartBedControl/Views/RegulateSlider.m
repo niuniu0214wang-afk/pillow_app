@@ -90,16 +90,26 @@
     return [image resizableImageWithCapInsets:UIEdgeInsetsMake(0, 4, 0, 4)];
 }
 
-// 根据视觉硬度返回对应颜色：低值偏软为绿，中间为蓝，高值偏硬为红
+// 硬度颜色从低到高依次过渡：绿 -> 黄 -> 红
 - (UIColor *)colorForValue:(int)v
 {
-    if (v <= 33) {
-        return [UIColor colorWithValue:@"#ef4444"];
-    } else if (v <= 66) {
-        return [UIColor colorWithValue:@"#00d4ff"];
-    } else {
-        return [UIColor colorWithValue:@"#00FF87"];
-    }
+    CGFloat progress = MAX(0.0, MIN(1.0, v / 100.0));
+    UIColor *startColor = [UIColor colorWithValue:@"#22c55e"];
+    UIColor *midColor = [UIColor colorWithValue:@"#facc15"];
+    UIColor *endColor = [UIColor colorWithValue:@"#ef4444"];
+    UIColor *fromColor = progress <= 0.5 ? startColor : midColor;
+    UIColor *toColor = progress <= 0.5 ? midColor : endColor;
+    CGFloat localProgress = progress <= 0.5 ? progress / 0.5 : (progress - 0.5) / 0.5;
+
+    CGFloat fr = 0, fg = 0, fb = 0, fa = 0;
+    CGFloat tr = 0, tg = 0, tb = 0, ta = 0;
+    [fromColor getRed:&fr green:&fg blue:&fb alpha:&fa];
+    [toColor getRed:&tr green:&tg blue:&tb alpha:&ta];
+
+    return [UIColor colorWithRed:(fr + (tr - fr) * localProgress)
+                           green:(fg + (tg - fg) * localProgress)
+                            blue:(fb + (tb - fb) * localProgress)
+                           alpha:(fa + (ta - fa) * localProgress)];
 }
 
 - (void)setValue:(int)value

@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 
-+ (id)shareInstance;
++ (instancetype)shareInstance;
 
 //+ (NSData *)testData:(NSString *)name userWeight:(int )weight;
 + (NSData *)testData;;
