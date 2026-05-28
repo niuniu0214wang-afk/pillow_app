@@ -508,6 +508,89 @@
     _weekDataView.hidden = YES;
     [self.view addSubview:_weekDataView];
 
+    CGFloat pad = 20.0;
+    CGFloat gap = 12.0;
+    CGFloat cardW = (iPhoneWidth - pad * 2 - gap) / 2.0;
+    NSArray *metrics = @[
+        @[@"周均评分", @"79"],
+        @[@"周均睡眠时长", @"8.0h"],
+        @[@"周均翻身次数", @"15"],
+        @[@"自动调节总次数", @"154"]
+    ];
+    for (NSInteger i = 0; i < metrics.count; i++) {
+        NSArray *metric = metrics[i];
+        NSInteger col = i % 2;
+        NSInteger row = i / 2;
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(pad + col * (cardW + gap), 10 + row * 82, cardW, 70)];
+        card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+        card.layer.cornerRadius = 16.0;
+        card.layer.masksToBounds = YES;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+        [_weekDataView addSubview:card];
+
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(14, 12, cardW - 28, 26)];
+        value.text = metric[1];
+        value.textColor = [UIColor whiteColor];
+        value.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightLight];
+        [card addSubview:value];
+
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(14, 42, cardW - 28, 16)];
+        label.text = metric[0];
+        label.textColor = [UIColor colorWithValue:@"#6b7280"];
+        label.font = [UIFont systemFontOfSize:11.0];
+        [card addSubview:label];
+    }
+
+    CGFloat chartY = 182.0;
+    _chartOne = [[SleepChartView alloc] initWithFrame:CGRectMake(0, chartY, iPhoneWidth, 180)];
+    _chartOne.title = @"睡眠评分趋势";
+    _chartOne.color = [UIColor colorWithValue:@"#f8fafc"];
+    _chartOne.dataSource = @[@74,@76,@79,@82,@78,@84,@81];
+    [_weekDataView addSubview:_chartOne];
+
+    _charTwo = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_chartOne.frame) + 14, iPhoneWidth, 180)];
+    _charTwo.title = @"睡眠时长趋势";
+    _charTwo.color = [UIColor colorWithValue:@"#22c55e"];
+    _charTwo.dataSource = @[@71,@75,@82,@85,@79,@86,@81];
+    [_weekDataView addSubview:_charTwo];
+
+    _chartThree = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_charTwo.frame) + 14, iPhoneWidth, 180)];
+    _chartThree.title = @"翻身次数趋势";
+    _chartThree.color = [UIColor colorWithValue:@"#f59e0b"];
+    _chartThree.dataSource = @[@19,@17,@16,@14,@15,@12,@13];
+    [_weekDataView addSubview:_chartThree];
+
+    SleepChartView *autoChart = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_chartThree.frame) + 14, iPhoneWidth, 180)];
+    autoChart.title = @"自动调节趋势";
+    autoChart.color = [UIColor colorWithValue:@"#38bdf8"];
+    autoChart.dataSource = @[@18,@20,@22,@24,@21,@26,@23];
+    [_weekDataView addSubview:autoChart];
+
+    UIView *summaryCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(autoChart.frame) + 18, iPhoneWidth - 40, 166)];
+    summaryCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    summaryCard.layer.cornerRadius = 16.0;
+    summaryCard.layer.masksToBounds = YES;
+    summaryCard.layer.borderWidth = 1.0;
+    summaryCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_weekDataView addSubview:summaryCard];
+
+    UILabel *summaryTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 16, summaryCard.bounds.size.width - 32, 18)];
+    summaryTitle.text = @"本周总结";
+    summaryTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    summaryTitle.font = [UIFont systemFontOfSize:12.0];
+    [summaryCard addSubview:summaryTitle];
+
+    UILabel *summary = [[UILabel alloc] initWithFrame:CGRectMake(16, 42, summaryCard.bounds.size.width - 32, 108)];
+    summary.text = @"• 本周睡眠评分在周四和周六达到峰值，自动调节完成度与评分变化呈正相关。\n• 翻身次数整体呈下降趋势，说明床垫支撑逐步稳定。\n• 周末睡眠时长更长，但工作日的入睡效率更好，建议维持固定入睡时段。";
+    summary.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    summary.font = [UIFont systemFontOfSize:12.0];
+    summary.numberOfLines = 0;
+    [summaryCard addSubview:summary];
+
+    _weekDataView.contentSize = CGSizeMake(0, CGRectGetMaxY(summaryCard.frame) + 30);
+    return;
+
     UILabel *trendLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 10, 100, 18)];
     trendLabel.font = [UIFont systemFontOfSize:11.0];
     trendLabel.textColor = [UIColor colorWithValue:@"#6b7280"];

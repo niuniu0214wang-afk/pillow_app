@@ -21,6 +21,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     MJProfileDetailTypeMattressAuto,
     MJProfileDetailTypePillowSnore,
     MJProfileDetailTypeAbout,
+    MJProfileDetailTypeFeedback,
     MJProfileDetailTypeAccount,
     MJProfileDetailTypeHelp
 };
@@ -39,6 +40,8 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) NSMutableArray<UILabel *> *helpAnswerLabels;
 @property (nonatomic, strong) NSMutableArray<UIView *> *helpAnswerCards;
+@property (nonatomic, strong) UITextView *feedbackTextView;
+@property (nonatomic, strong) UITextField *feedbackContactField;
 - (instancetype)initWithType:(MJProfileDetailType)type title:(NSString *)title;
 @end
 
@@ -496,6 +499,9 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
                 @{@"title":@"一键反馈", @"detail":@"提交问题和联系方式"}
             ];
             break;
+        case MJProfileDetailTypeFeedback:
+            self.items = @[];
+            break;
         case MJProfileDetailTypeAccount:
             self.items = @[
                 @{@"title":@"注销账号", @"detail":@"需要二次确认"},
@@ -549,6 +555,10 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
         [self buildHelpUIInScrollView:scrollView];
         return;
     }
+    if (self.type == MJProfileDetailTypeFeedback) {
+        [self buildFeedbackUIInScrollView:scrollView];
+        return;
+    }
 
     CGFloat y = 0;
     UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, self.items.count * 72)];
@@ -580,6 +590,13 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
             UIView *line = [[UIView alloc] initWithFrame:CGRectMake(18, 71.5, card.bounds.size.width - 36, 0.5)];
             line.backgroundColor = [UIColor colorWithValue:@"#27272a"];
             [row addSubview:line];
+        }
+
+        if (self.type == MJProfileDetailTypeAbout && i == 4) {
+            UIButton *tap = [UIButton buttonWithType:UIButtonTypeCustom];
+            tap.frame = row.bounds;
+            [tap addTarget:self action:@selector(openFeedbackPage) forControlEvents:UIControlEventTouchUpInside];
+            [row addSubview:tap];
         }
     }
 
@@ -736,6 +753,63 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     note.numberOfLines = 0;
     [scrollView addSubview:note];
     scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
+- (void)buildFeedbackUIInScrollView:(UIScrollView *)scrollView
+{
+    CGFloat y = 0;
+    self.feedbackTextView = [[UITextView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 150)];
+    self.feedbackTextView.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    self.feedbackTextView.textColor = [UIColor whiteColor];
+    self.feedbackTextView.font = [UIFont systemFontOfSize:14.0];
+    self.feedbackTextView.layer.cornerRadius = 18.0;
+    self.feedbackTextView.layer.masksToBounds = YES;
+    self.feedbackTextView.layer.borderWidth = 1.0;
+    self.feedbackTextView.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    self.feedbackTextView.text = @"告诉我们你遇到的问题";
+    self.feedbackTextView.textColor = [UIColor colorWithValue:@"#6b7280"];
+    [scrollView addSubview:self.feedbackTextView];
+
+    y = CGRectGetMaxY(self.feedbackTextView.frame) + 14;
+    UIButton *imageBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    imageBtn.frame = CGRectMake(20, y, iPhoneWidth - 40, 56);
+    imageBtn.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    imageBtn.layer.cornerRadius = 16.0;
+    imageBtn.layer.masksToBounds = YES;
+    imageBtn.layer.borderWidth = 1.0;
+    imageBtn.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [imageBtn setTitle:@"添加图片" forState:UIControlStateNormal];
+    [imageBtn setTitleColor:[UIColor colorWithValue:@"#d1d5db"] forState:UIControlStateNormal];
+    imageBtn.titleLabel.font = [UIFont systemFontOfSize:14.0];
+    [scrollView addSubview:imageBtn];
+
+    y = CGRectGetMaxY(imageBtn.frame) + 14;
+    self.feedbackContactField = [[UITextField alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 52)];
+    self.feedbackContactField.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    self.feedbackContactField.textColor = [UIColor whiteColor];
+    self.feedbackContactField.font = [UIFont systemFontOfSize:14.0];
+    self.feedbackContactField.layer.cornerRadius = 16.0;
+    self.feedbackContactField.layer.masksToBounds = YES;
+    self.feedbackContactField.layer.borderWidth = 1.0;
+    self.feedbackContactField.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    self.feedbackContactField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 14, 1)];
+    self.feedbackContactField.leftViewMode = UITextFieldViewModeAlways;
+    self.feedbackContactField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"联系方式（电话或邮箱）" attributes:@{NSForegroundColorAttributeName:[UIColor colorWithValue:@"#6b7280"]}];
+    [scrollView addSubview:self.feedbackContactField];
+
+    y = CGRectGetMaxY(self.feedbackContactField.frame) + 18;
+    UIButton *submit = [UIButton buttonWithType:UIButtonTypeCustom];
+    submit.frame = CGRectMake(20, y, iPhoneWidth - 40, 52);
+    submit.backgroundColor = [UIColor whiteColor];
+    submit.layer.cornerRadius = 14.0;
+    submit.layer.masksToBounds = YES;
+    [submit setTitle:@"提交" forState:UIControlStateNormal];
+    [submit setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    submit.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    [submit addTarget:self action:@selector(submitFeedback) forControlEvents:UIControlEventTouchUpInside];
+    [scrollView addSubview:submit];
+
+    scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(submit.frame) + 40);
 }
 
 - (void)buildHelpUIInScrollView:(UIScrollView *)scrollView
@@ -966,6 +1040,17 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     self.alarmEnabled = sender.on;
     [[NSUserDefaults standardUserDefaults] setBool:self.alarmEnabled forKey:@"body_alarm_enabled"];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)openFeedbackPage
+{
+    MJProfileDetailController *feedbackVC = [[MJProfileDetailController alloc] initWithType:MJProfileDetailTypeFeedback title:@"一键反馈"];
+    [self.navigationController pushViewController:feedbackVC animated:YES];
+}
+
+- (void)submitFeedback
+{
+    [MJProgressHUD onlyShowMessage:@"感谢您的反馈，我们将尽快与您取得联系。" afterDelay:1.0 showAddTo:self.view];
 }
 
 - (void)alarmDayTapped:(UIButton *)sender
