@@ -27,6 +27,10 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, assign) MJProfileDetailType type;
 @property (nonatomic, copy) NSString *pageTitle;
 @property (nonatomic, copy) NSArray<NSDictionary *> *items;
+@property (nonatomic, copy) NSString *selectedAutoMode;
+@property (nonatomic, assign) BOOL dndEnabled;
+@property (nonatomic, copy) NSString *dndStart;
+@property (nonatomic, copy) NSString *dndEnd;
 - (instancetype)initWithType:(MJProfileDetailType)type title:(NSString *)title;
 @end
 
@@ -411,8 +415,18 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 {
     [super viewDidLoad];
     self.view.backgroundColor = mainColor;
+    [self loadInteractiveSettings];
     [self buildItems];
     [self buildUI];
+}
+
+- (void)loadInteractiveSettings
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    self.selectedAutoMode = [defaults objectForKey:@"mattress_auto_mode"] ?: @"standard";
+    self.dndEnabled = [defaults boolForKey:@"mattress_dnd_enabled"];
+    self.dndStart = [defaults objectForKey:@"mattress_dnd_start"] ?: @"22:00";
+    self.dndEnd = [defaults objectForKey:@"mattress_dnd_end"] ?: @"06:00";
 }
 
 - (void)buildItems
@@ -492,6 +506,11 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     scrollView.alwaysBounceVertical = YES;
     [self.view addSubview:scrollView];
 
+    if (self.type == MJProfileDetailTypeMattressAuto) {
+        [self buildMattressAutoUIInScrollView:scrollView];
+        return;
+    }
+
     CGFloat y = 0;
     UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, self.items.count * 72)];
     card.backgroundColor = [UIColor colorWithValue:@"#111111"];
@@ -533,6 +552,215 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     note.text = [self footerNote];
     [scrollView addSubview:note];
     scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
+- (void)buildMattressAutoUIInScrollView:(UIScrollView *)scrollView
+{
+    CGFloat y = 0;
+    NSArray *modes = @[
+        @{@"id":@"gentle", @"title":@"轻柔模式", @"detail":@"适合睡眠较浅、敏感人群", @"level":@"30%"},
+        @{@"id":@"standard", @"title":@"标准模式", @"detail":@"适合大部分用户", @"level":@"50%"},
+        @{@"id":@"enhanced", @"title":@"加强模式", @"detail":@"更积极的人体工学反馈", @"level":@"70%"}
+    ];
+
+    UILabel *modeHeader = [self detailSectionLabel:@"自动调节模式" y:y];
+    [scrollView addSubview:modeHeader];
+    y = CGRectGetMaxY(modeHeader.frame) + 12;
+
+    for (NSInteger i = 0; i < modes.count; i++) {
+        NSDictionary *mode = modes[i];
+        UIButton *card = [self modeCardWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 84) mode:mode];
+        card.tag = 700 + i;
+        [card addTarget:self action:@selector(autoModeSelected:) forControlEvents:UIControlEventTouchUpInside];
+        [scrollView addSubview:card];
+        y = CGRectGetMaxY(card.frame) + 12;
+    }
+
+    UILabel *dndHeader = [self detailSectionLabel:@"勿动模式" y:y + 6];
+    [scrollView addSubview:dndHeader];
+    y = CGRectGetMaxY(dndHeader.frame) + 12;
+
+    UIView *dndCard = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 184)];
+    dndCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    dndCard.layer.cornerRadius = 18.0;
+    dndCard.layer.masksToBounds = YES;
+    dndCard.layer.borderWidth = 1.0;
+    dndCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [scrollView addSubview:dndCard];
+
+    UILabel *dndTitle = [[UILabel alloc] initWithFrame:CGRectMake(18, 16, dndCard.bounds.size.width - 92, 22)];
+    dndTitle.text = @"启用勿动模式";
+    dndTitle.textColor = [UIColor whiteColor];
+    dndTitle.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    [dndCard addSubview:dndTitle];
+
+    UILabel *dndDetail = [[UILabel alloc] initWithFrame:CGRectMake(18, 40, dndCard.bounds.size.width - 36, 18)];
+    dndDetail.text = @"指定时间段内停止自动调节";
+    dndDetail.textColor = [UIColor colorWithValue:@"#6b7280"];
+    dndDetail.font = [UIFont systemFontOfSize:12.0];
+    [dndCard addSubview:dndDetail];
+
+    UISwitch *dndSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(dndCard.bounds.size.width - 70, 17, 52, 32)];
+    dndSwitch.on = self.dndEnabled;
+    [dndSwitch addTarget:self action:@selector(dndSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [dndCard addSubview:dndSwitch];
+
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(18, 72, dndCard.bounds.size.width - 36, 0.5)];
+    line.backgroundColor = [UIColor colorWithValue:@"#27272a"];
+    [dndCard addSubview:line];
+
+    UILabel *fromLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 88, 60, 18)];
+    fromLabel.text = @"开始";
+    fromLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+    fromLabel.font = [UIFont systemFontOfSize:12.0];
+    [dndCard addSubview:fromLabel];
+
+    UIButton *startBtn = [self timeButtonWithFrame:CGRectMake(18, 112, (dndCard.bounds.size.width - 48) / 2.0, 44) title:self.dndStart tag:801];
+    [dndCard addSubview:startBtn];
+
+    UILabel *toLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(startBtn.frame) + 12, 88, 60, 18)];
+    toLabel.text = @"结束";
+    toLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+    toLabel.font = [UIFont systemFontOfSize:12.0];
+    [dndCard addSubview:toLabel];
+
+    UIButton *endBtn = [self timeButtonWithFrame:CGRectMake(CGRectGetMaxX(startBtn.frame) + 12, 112, (dndCard.bounds.size.width - 48) / 2.0, 44) title:self.dndEnd tag:802];
+    [dndCard addSubview:endBtn];
+
+    UILabel *note = [[UILabel alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(dndCard.frame) + 18, iPhoneWidth - 48, 80)];
+    note.text = @"该页对应网页原型中的自动调节模式设定。勿动模式开启后，在设定时段内不触发床垫自动调节。";
+    note.textColor = [UIColor colorWithValue:@"#6b7280"];
+    note.font = [UIFont systemFontOfSize:13.0];
+    note.numberOfLines = 0;
+    [scrollView addSubview:note];
+    scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
+- (UILabel *)detailSectionLabel:(NSString *)text y:(CGFloat)y
+{
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 18)];
+    label.text = text;
+    label.textColor = [UIColor colorWithValue:@"#6b7280"];
+    label.font = [UIFont systemFontOfSize:12.0];
+    return label;
+}
+
+- (UIButton *)modeCardWithFrame:(CGRect)frame mode:(NSDictionary *)mode
+{
+    BOOL selected = [self.selectedAutoMode isEqualToString:mode[@"id"]];
+    UIButton *card = [UIButton buttonWithType:UIButtonTypeCustom];
+    card.frame = frame;
+    card.backgroundColor = [UIColor colorWithValue:selected ? @"#1a1a1a" : @"#111111"];
+    card.layer.cornerRadius = 18.0;
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = 1.0;
+    NSString *borderColor = selected ? @"#ffffff" : @"#27272a";
+    CGFloat borderAlpha = selected ? 0.22 : 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:borderColor alpha:borderAlpha].CGColor;
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 14, frame.size.width - 96, 22)];
+    title.text = mode[@"title"];
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    [card addSubview:title];
+
+    UILabel *detail = [[UILabel alloc] initWithFrame:CGRectMake(18, 38, frame.size.width - 96, 18)];
+    detail.text = mode[@"detail"];
+    detail.textColor = [UIColor colorWithValue:@"#6b7280"];
+    detail.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:detail];
+
+    UILabel *level = [[UILabel alloc] initWithFrame:CGRectMake(frame.size.width - 72, 23, 52, 24)];
+    level.text = mode[@"level"];
+    level.textColor = selected ? [UIColor blackColor] : [UIColor colorWithValue:@"#9ca3af"];
+    level.backgroundColor = selected ? [UIColor whiteColor] : [UIColor colorWithValue:@"#1a1a1a"];
+    level.layer.cornerRadius = 12.0;
+    level.layer.masksToBounds = YES;
+    level.textAlignment = NSTextAlignmentCenter;
+    level.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    [card addSubview:level];
+
+    return card;
+}
+
+- (UIButton *)timeButtonWithFrame:(CGRect)frame title:(NSString *)title tag:(NSInteger)tag
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = frame;
+    button.tag = tag;
+    button.backgroundColor = [UIColor colorWithValue:@"#1a1a1a"];
+    button.layer.cornerRadius = 12.0;
+    button.layer.masksToBounds = YES;
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    button.titleLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    [button addTarget:self action:@selector(timeButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+- (void)autoModeSelected:(UIButton *)sender
+{
+    NSArray *ids = @[@"gentle", @"standard", @"enhanced"];
+    NSInteger index = sender.tag - 700;
+    if (index < 0 || index >= ids.count) {
+        return;
+    }
+    self.selectedAutoMode = ids[index];
+    [[NSUserDefaults standardUserDefaults] setObject:self.selectedAutoMode forKey:@"mattress_auto_mode"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self.view.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self buildItems];
+    [self buildUI];
+}
+
+- (void)dndSwitchChanged:(UISwitch *)sender
+{
+    self.dndEnabled = sender.on;
+    [[NSUserDefaults standardUserDefaults] setBool:self.dndEnabled forKey:@"mattress_dnd_enabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)timeButtonPressed:(UIButton *)sender
+{
+    BOOL editingStart = sender.tag == 801;
+    [self showTimePickerForStart:editingStart sender:sender];
+}
+
+- (void)showTimePickerForStart:(BOOL)editingStart sender:(UIButton *)sender
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:editingStart ? @"开始时间" : @"结束时间"
+                                                                   message:@"\n\n\n\n\n\n\n\n"
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectMake(12, 42, alert.view.bounds.size.width - 24, 180)];
+    picker.datePickerMode = UIDatePickerModeTime;
+    if (@available(iOS 13.4, *)) {
+        picker.preferredDatePickerStyle = UIDatePickerStyleWheels;
+    }
+    picker.locale = [NSLocale localeWithLocaleIdentifier:@"zh_CN"];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"HH:mm";
+    NSDate *date = [formatter dateFromString:editingStart ? self.dndStart : self.dndEnd];
+    if (date) {
+        picker.date = date;
+    }
+    [alert.view addSubview:picker];
+
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSString *time = [formatter stringFromDate:picker.date];
+        if (editingStart) {
+            self.dndStart = time;
+            [[NSUserDefaults standardUserDefaults] setObject:time forKey:@"mattress_dnd_start"];
+        } else {
+            self.dndEnd = time;
+            [[NSUserDefaults standardUserDefaults] setObject:time forKey:@"mattress_dnd_end"];
+        }
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [sender setTitle:time forState:UIControlStateNormal];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (NSString *)footerNote
