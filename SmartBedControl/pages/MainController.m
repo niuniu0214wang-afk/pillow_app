@@ -269,7 +269,9 @@
     
     
     NSLog(@"看一看  安全区----%f",safeBottom);
-    self.autoModeView = [[UIView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(btnBG.frame) + 10, iPhoneWidth, iPhoneHeight - TAB_BAR_HEIGHT - CGRectGetMaxY(btnBG.frame) - 60)];
+    UIScrollView *autoScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(btnBG.frame) + 10, iPhoneWidth, iPhoneHeight - TAB_BAR_HEIGHT - CGRectGetMaxY(btnBG.frame) - 60)];
+    autoScrollView.showsVerticalScrollIndicator = NO;
+    self.autoModeView = autoScrollView;
     self.autoModeView.backgroundColor = [UIColor clearColor];
     [self.view addSubview:self.autoModeView];
     
@@ -362,12 +364,98 @@
     [self.autoModeView addSubview:bedImageView];
     
     
+    CGFloat progressBottom = CGRectGetMaxY(bedImageView.frame);
     for (int i = 0 ; i < _partArr.count; i++) {
         RegulateProgress *porssess = _progressArr[i];
         porssess.frame = CGRectMake(0, CGRectGetMaxY(bedImageView.frame) + i%_partArr.count * 40, iPhoneWidth, 40);
         porssess.title = _partArr[i];
         [self.autoModeView addSubview:porssess];
+        progressBottom = CGRectGetMaxY(porssess.frame);
     }
+
+    UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(cardPad, progressBottom + 12, iPhoneWidth - cardPad * 2, 42)];
+    statusView.backgroundColor = [UIColor colorWithValue:@"#eab308" alpha:0.10];
+    statusView.layer.cornerRadius = 14.0;
+    statusView.layer.masksToBounds = YES;
+    statusView.layer.borderWidth = 1.0;
+    statusView.layer.borderColor = [UIColor colorWithValue:@"#eab308" alpha:0.22].CGColor;
+    [self.autoModeView addSubview:statusView];
+
+    UIView *adjustDot = [[UIView alloc] initWithFrame:CGRectMake(18, 17, 8, 8)];
+    adjustDot.backgroundColor = [UIColor colorWithValue:@"#eab308"];
+    adjustDot.layer.cornerRadius = 4.0;
+    [statusView addSubview:adjustDot];
+
+    UILabel *statusText = [[UILabel alloc] initWithFrame:CGRectMake(34, 0, statusView.frame.size.width - 50, 42)];
+    statusText.text = @"调节中";
+    statusText.textColor = [UIColor colorWithValue:@"#fde68a"];
+    statusText.textAlignment = NSTextAlignmentCenter;
+    statusText.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    [statusView addSubview:statusText];
+
+    UILabel *modeTitle = [[UILabel alloc] initWithFrame:CGRectMake(cardPad, CGRectGetMaxY(statusView.frame) + 16, iPhoneWidth - cardPad * 2, 18)];
+    modeTitle.text = @"自动功能";
+    modeTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    modeTitle.font = [UIFont systemFontOfSize:12.0];
+    [self.autoModeView addSubview:modeTitle];
+
+    NSArray *autoModes = @[
+        @{@"title":@"牵引模式", @"desc":@"分区拉伸支撑", @"icon":@"lashen", @"color":@"#00d4ff"},
+        @{@"title":@"悬浮模式", @"desc":@"降低局部压迫", @"icon":@"zhumian", @"color":@"#a78bfa"},
+        @{@"title":@"怀抱模式", @"desc":@"柔和包裹承托", @"icon":@"anmo", @"color":@"#f97316"},
+        @{@"title":@"海浪模式", @"desc":@"循环起伏放松", @"icon":@"hailang", @"color":@"#00FF87"}
+    ];
+
+    CGFloat autoGridTop = CGRectGetMaxY(modeTitle.frame) + 10;
+    CGFloat autoCardW = (iPhoneWidth - cardPad * 2 - cardGap) / 2.0;
+    CGFloat autoCardH = 86.0;
+    for (int i = 0; i < autoModes.count; i++) {
+        NSDictionary *dict = autoModes[i];
+        NSInteger col = i % 2;
+        NSInteger row = i / 2;
+        UIButton *modeCard = [UIButton buttonWithType:UIButtonTypeCustom];
+        modeCard.frame = CGRectMake(cardPad + col * (autoCardW + cardGap), autoGridTop + row * (autoCardH + cardGap), autoCardW, autoCardH);
+        modeCard.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
+        modeCard.layer.cornerRadius = 16.0;
+        modeCard.layer.masksToBounds = YES;
+        modeCard.layer.borderWidth = 1.0;
+        modeCard.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.06].CGColor;
+        modeCard.tag = 260 + i;
+        [modeCard addTarget:self action:@selector(modeChanged:) forControlEvents:UIControlEventTouchUpInside];
+        [self.autoModeView addSubview:modeCard];
+
+        UIView *iconBg = [[UIView alloc] initWithFrame:CGRectMake(14, 14, 32, 32)];
+        iconBg.backgroundColor = [UIColor colorWithValue:dict[@"color"] alpha:0.12];
+        iconBg.layer.cornerRadius = 10.0;
+        iconBg.layer.masksToBounds = YES;
+        [modeCard addSubview:iconBg];
+
+        UIImageView *icon = [[UIImageView alloc] initWithFrame:CGRectMake(8, 8, 16, 16)];
+        icon.image = [[UIImage imageNamed:dict[@"icon"]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        icon.tintColor = [UIColor colorWithValue:dict[@"color"]];
+        [iconBg addSubview:icon];
+
+        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(56, 14, autoCardW - 68, 20)];
+        title.text = dict[@"title"];
+        title.textColor = [UIColor whiteColor];
+        title.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+        [modeCard addSubview:title];
+
+        UILabel *desc = [[UILabel alloc] initWithFrame:CGRectMake(56, 36, autoCardW - 68, 18)];
+        desc.text = dict[@"desc"];
+        desc.textColor = [UIColor colorWithValue:@"#6b7280"];
+        desc.font = [UIFont systemFontOfSize:10.0];
+        [modeCard addSubview:desc];
+
+        UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(14, 58, autoCardW - 28, 18)];
+        timeLabel.text = @"15 min";
+        timeLabel.textAlignment = NSTextAlignmentRight;
+        timeLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        timeLabel.font = [UIFont systemFontOfSize:11.0];
+        [modeCard addSubview:timeLabel];
+    }
+
+    autoScrollView.contentSize = CGSizeMake(0, autoGridTop + autoCardH * 2 + cardGap + 24);
     self.autoModeView.hidden = YES;
     
   //**********************************手动调节******************************
@@ -497,69 +585,17 @@
     
     
     
-    // ── 特殊模式按钮：2×2 网格，图标 24×24（Step 8）──
     CGFloat modePad  = SCALE(16);
-    CGFloat modeGap  = SCALE(12);
-    CGFloat modeCardW = (panelW - modePad * 2 - modeGap) / 2.0;
-    CGFloat modeCardH = modeCardW * 0.5;
-    UIView *moreModeView = [[UIView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_softBtn.frame) + 20, panelW, modeCardH * 2 + modeGap + 10)];
-    moreModeView.backgroundColor = [UIColor clearColor];
-    [_manualControlPanel addSubview:moreModeView];
-
-    NSArray *btnArr = @[
-        @{@"title":@"助眠模式", @"icon":@"zhumian", @"color":@"#a78bfa"},
-        @{@"title":@"拉伸模式", @"icon":@"lashen",  @"color":@"#00d4ff"},
-        @{@"title":@"按摩模式", @"icon":@"anmo",    @"color":@"#f97316"},
-        @{@"title":@"海浪波动", @"icon":@"hailang",  @"color":@"#00FF87"},
-    ];
-
-    for (int i = 0; i < 4; i++) {
-        int col = i % 2;
-        int row = i / 2;
-        CGFloat x = modePad + col * (modeCardW + modeGap);
-        CGFloat y = row * (modeCardH + modeGap);
-
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
-        btn.frame = CGRectMake(x, y, modeCardW, modeCardH);
-        btn.layer.cornerRadius = 16.0;
-        btn.layer.masksToBounds = YES;
-        btn.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
-        btn.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.06].CGColor;
-        btn.layer.borderWidth = 1.0;
-        [btn addTarget:self action:@selector(modeChanged:) forControlEvents:UIControlEventTouchUpInside];
-        btn.tag = 260 + i;
-        [moreModeView addSubview:btn];
-
-        NSDictionary *dict = btnArr[i];
-        UIView *iconContainer = [[UIView alloc] initWithFrame:CGRectMake(SCALE(16), (modeCardH - 32)/2.0, 32, 32)];
-        iconContainer.layer.cornerRadius = 10.0;
-        iconContainer.layer.masksToBounds = YES;
-        iconContainer.backgroundColor = [UIColor colorWithValue:dict[@"color"] alpha:0.12];
-        [btn addSubview:iconContainer];
-
-        UIImageView *icon = [[UIImageView alloc] initWithFrame:CGRectMake(8, 8, 16, 16)];
-        icon.image = [[UIImage imageNamed:dict[@"icon"]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        icon.tintColor = [UIColor colorWithValue:dict[@"color"]];
-        [iconContainer addSubview:icon];
-
-        UILabel *btnLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(iconContainer.frame) + SCALE(10), 0, modeCardW - iconContainer.frame.origin.x - 32 - SCALE(20), modeCardH)];
-        btnLabel.textAlignment = NSTextAlignmentLeft;
-        btnLabel.font = [UIFont systemFontOfSize:SCALE(13.0)];
-        btnLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
-        btnLabel.text = dict[@"title"];
-        [btn addSubview:btnLabel];
-    }
-    
-    
+    CGFloat sliderStartY = CGRectGetMaxY(_softBtn.frame) + 22;
     for (int i= 0; i < _sliderArr.count; i++) {
         RegulateSlider *slider = _sliderArr[i];
-        slider.frame = CGRectMake(0,30 + CGRectGetMaxY(moreModeView.frame) + (i%_sliderArr.count)*70, panelW, 70);
+        slider.frame = CGRectMake(0, sliderStartY + (i%_sliderArr.count)*70, panelW, 70);
         slider.delegate = self;
         slider.title = _partArr[i];
         [_manualControlPanel addSubview:slider];
     }
 
-    CGFloat actionY = 30 + CGRectGetMaxY(moreModeView.frame) + _sliderArr.count * 70 + 8;
+    CGFloat actionY = sliderStartY + _sliderArr.count * 70 + 8;
     CGFloat actionGap = SCALE(12);
     CGFloat actionW = (panelW - modePad * 2 - actionGap) / 2.0;
 
@@ -594,7 +630,6 @@
     
     
     
-//    NSArray *modeArr = @[@{@"title":@"助眠模式",@"icon":@"zhumian"},@{@"title":@"拉伸模式",@"icon":@"lashen"},@{@"title":@"按摩模式",@"icon":@"anmo"},@{@"title":@"海浪波动",@"icon":@"zhumian"},];
 //    
 //    for (int i = 0; i < modeArr.count; i++) {
 //        NSDictionary *dict = modeArr[i];
