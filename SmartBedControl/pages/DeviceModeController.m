@@ -164,6 +164,7 @@
     // 空状态视图
     self.emptyView = [[UIView alloc] initWithFrame:self.collectionView.frame];
     self.emptyView.hidden = YES;
+    self.emptyView.userInteractionEnabled = NO;
     [self.view addSubview:self.emptyView];
 
     UIImageView *emptyIcon = [[UIImageView alloc] initWithFrame:CGRectMake((self.emptyView.bounds.size.width - 48)/2, 80, 48, 48)];
@@ -222,7 +223,7 @@
         self.displayDevices = [self.categoryDevices filteredArrayUsingPredicate:predicate];
     }
     [self.collectionView reloadData];
-    self.emptyView.hidden = (self.displayDevices.count > 0);
+    self.emptyView.hidden = YES;
 }
 
 #pragma mark - UICollectionViewDataSource
@@ -279,6 +280,8 @@
         return;
     }
     SearchController *searchVC = [[SearchController alloc] init];
+    searchVC.deviceName = (self.selectIndex == 60) ? @"MJ-1" : @"MJ-2";
+    self.manager.deviceName = searchVC.deviceName;
     [self.navigationController pushViewController:searchVC animated:YES];
 }
 

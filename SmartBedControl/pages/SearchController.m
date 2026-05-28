@@ -9,6 +9,9 @@
 #import "../Views/DeviceCell.h"
 #import "../SceneDelegate.h"
 #import "../controllers/MineController.h"
+#import "../Tools/DataCenter.h"
+#import "MainController.h"
+#import "PillowController.h"
 
 @interface SearchController ()<UINavigationControllerDelegate,UITableViewDelegate,UITableViewDataSource,bleManagerDelegate>
 @property (strong, nonatomic) UITableView *tableView;
@@ -35,6 +38,9 @@
     
     _bleManager = [BLEManager shareInstance];
     _bleManager.delegate = self;
+    if (self.deviceName.length > 0) {
+        _bleManager.deviceName = self.deviceName;
+    }
     [_bleManager didStartScanDevice:YES];
         
     self.view.backgroundColor = mainColor;
@@ -168,66 +174,12 @@
     }else{
         _bleManager.mode = PillowNormal;
     }
-    
-    //UINavigationController *firstNav = self.tabBarController.viewControllers.firstObject;
-    
-    
-    
-    
-    self.tabBarController.selectedIndex = 0;
-    MineController *mineVC = [[MineController alloc] init];
-    UINavigationController *nav = self.navigationController;
-    nav.viewControllers = @[mineVC];
-    
-//    NSString *mac = _dict[@"mac"];
-//    //[DataCenter shareInstance].state = peripheral.state;
-//    
-//    UIAlertController *aler = [UIAlertController alertControllerWithTitle:nil message:@"请输入床垫名字" preferredStyle:UIAlertControllerStyleAlert];
-//    [aler addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
-//        textField.placeholder = @"名称";
-//    }];
-//    
-//    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-//        UITextField *field = aler.textFields.firstObject;
-//        if (field.text.length < 1 || [field.text isEqualToString:@""]) {
-//            [MJProgressHUD onlyShowMessage:@"请输入床垫名称" afterDelay:1.0 showAddTo:self.view];
-//            return;
-//        }
-//        
-//        if (field.text.length > 14) {
-//            [MJProgressHUD onlyShowMessage:@"名称太长了" afterDelay:1.0 showAddTo:self.view];
-//            return;
-//        }
-//        
-//        BedModel *bed = [[BedModel alloc] init];
-//        if ([peripheral.name containsString:@"MJ-10"]) {
-//            bed.mode = BedNormal;
-//        }
-//        bed.bedName = field.text;
-//        bed.mac = self.dict[@"mac"];
-//        bed.letfUser = 0;
-//        bed.rightUser = 0;
-//        
-//        if ([self localHasThisBed:mac]) {
-//            [MJProgressHUD onlyShowMessage:@"设备已经添加过" afterDelay:1.0 showAddTo:self.view];
-//            return;
-//        }else{
-//            [[DataCenter shareInstance] addBed:bed];
-//            bed.state = peripheral.state;
-//            bed.myCharacteristic = characteristic;
-//            bed.myPer = peripheral;
-//            NSMutableArray *tempArr = [DataCenter shareInstance].deviceArr.mutableCopy;
-//            [tempArr addObject:bed];
-//            [DataCenter shareInstance].deviceArr = tempArr.copy;
-//            [self.navigationController popViewControllerAnimated:YES];
-//            [[NSNotificationCenter defaultCenter] postNotificationName:@"uploadBedList" object:nil];
-//        }
-//    }];
-//    
-//    [aler addAction:okAction];
-//    [self presentViewController:aler animated:YES completion:nil];
-    
-    
+
+    BedModel *bed = [self connectedBedForPeripheral:peripheral];
+    [DataCenter shareInstance].connectedBed = bed;
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"uploadBedList" object:nil];
+    [MJProgressHUD onlyShowMessage:@"设备连接成功" afterDelay:0.8 showAddTo:self.view];
+    [self openConnectedDevice:bed];
 }
 
 
@@ -246,6 +198,60 @@
         }
     }
     return isHase;
+}
+
+- (BedModel *)connectedBedForPeripheral:(CBPeripheral *)peripheral
+{
+    NSString *mac = self.dict[@"mac"] ?: peripheral.identifier.UUIDString ?: @"";
+    NSArray<BedModel *> *allBeds = [[DataCenter shareInstance] getAllBeds];
+    for (BedModel *bed in allBeds) {
+        if ([bed.mac isEqualToString:mac]) {
+            bed.mode = _bleManager.mode;
+            bed.state = peripheral.state;
+            bed.myPer = peripheral;
+            bed.bedName = bed.bedName.length > 0 ? bed.bedName : [self defaultNameForMode:_bleManager.mode];
+            return bed;
+        }
+    }
+
+    BedModel *bed = [[BedModel alloc] init];
+    bed.mode = _bleManager.mode;
+    bed.bedName = [self defaultNameForMode:_bleManager.mode];
+    bed.mac = mac;
+    bed.letfUser = 0;
+    bed.rightUser = 0;
+    bed.state = peripheral.state;
+    bed.myPer = peripheral;
+    [[DataCenter shareInstance] addBed:bed];
+
+    NSMutableArray *tempArr = [NSMutableArray arrayWithArray:[DataCenter shareInstance].deviceArr ?: @[]];
+    [tempArr addObject:bed];
+    [DataCenter shareInstance].deviceArr = tempArr.copy;
+    return bed;
+}
+
+- (NSString *)defaultNameForMode:(BedMode)mode
+{
+    if (mode == PillowNormal) {
+        return @"DreamPillow Pro";
+    }
+    if (mode == BedPro) {
+        return @"SmartRest Elite";
+    }
+    return @"AI Adaptive Mattress Pro";
+}
+
+- (void)openConnectedDevice:(BedModel *)bed
+{
+    if (bed.mode == PillowNormal) {
+        PillowController *pillowVC = [[PillowController alloc] init];
+        [self.navigationController pushViewController:pillowVC animated:YES];
+        return;
+    }
+
+    MainController *mainVC = [[MainController alloc] init];
+    mainVC.bed = bed;
+    [self.navigationController pushViewController:mainVC animated:YES];
 }
 
 - (void)showConnectedAnimation
