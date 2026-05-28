@@ -15,6 +15,9 @@ typedef NS_ENUM(NSInteger, LoginMode) {
     LoginModeCode
 };
 
+@interface LoginBedSelectController : UIViewController
+@end
+
 @interface LoginController ()
 
 @property (strong, nonatomic) UIView      *welcomeView;
@@ -38,6 +41,165 @@ typedef NS_ENUM(NSInteger, LoginMode) {
 @property (strong, nonatomic) UIButton *loginBtn;
 
 @property (assign, nonatomic) LoginMode loginMode;
+
+@end
+
+@implementation LoginBedSelectController
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor blackColor];
+    [self buildUI];
+}
+
+- (void)buildUI
+{
+    UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    backBtn.frame = CGRectMake(18, STATUS_BAR_HEIGHT + 8, 36, 32);
+    [backBtn setImage:[UIImage systemImageNamed:@"chevron.left"] forState:UIControlStateNormal];
+    backBtn.tintColor = [UIColor colorWithValue:@"#6b7280"];
+    [backBtn addTarget:self action:@selector(back) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:backBtn];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(80, STATUS_BAR_HEIGHT + 10, iPhoneWidth - 160, 26)];
+    title.text = @"智能床垫";
+    title.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    title.textAlignment = NSTextAlignmentCenter;
+    title.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightLight];
+    [self.view addSubview:title];
+
+    UILabel *connected = [[UILabel alloc] initWithFrame:CGRectMake(iPhoneWidth - 94, STATUS_BAR_HEIGHT + 12, 74, 22)];
+    connected.text = @"已连接";
+    connected.textColor = [UIColor colorWithValue:@"#22c55e"];
+    connected.textAlignment = NSTextAlignmentRight;
+    connected.font = [UIFont systemFontOfSize:11.0];
+    [self.view addSubview:connected];
+
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, STATUS_BAR_HEIGHT + 86, iPhoneWidth - 40, 20)];
+    hint.text = @"选择床位查看详情";
+    hint.textColor = [UIColor colorWithValue:@"#4b5563"];
+    hint.textAlignment = NSTextAlignmentCenter;
+    hint.font = [UIFont systemFontOfSize:12.0];
+    [self.view addSubview:hint];
+
+    CGFloat bedW = iPhoneWidth - 48;
+    CGFloat bedH = 245;
+    UIView *bed = [[UIView alloc] initWithFrame:CGRectMake(24, STATUS_BAR_HEIGHT + 128, bedW, bedH)];
+    bed.backgroundColor = [UIColor colorWithValue:@"#111116"];
+    bed.layer.cornerRadius = 14.0;
+    bed.layer.borderWidth = 1.0;
+    bed.layer.borderColor = [UIColor colorWithValue:@"#2a2a34"].CGColor;
+    [self.view addSubview:bed];
+
+    UIView *divider = [[UIView alloc] initWithFrame:CGRectMake((bedW - 1) / 2.0, 12, 1, bedH - 24)];
+    divider.backgroundColor = [UIColor colorWithValue:@"#333333"];
+    [bed addSubview:divider];
+
+    UIButton *left = [self sideButtonWithFrame:CGRectMake(10, 12, bedW / 2.0 - 16, bedH - 24)
+                                         title:@"左床"
+                                          name:@"小明"
+                                         color:@"#00ccff"
+                                           tag:1001];
+    [bed addSubview:left];
+
+    UIButton *right = [self sideButtonWithFrame:CGRectMake(bedW / 2.0 + 6, 12, bedW / 2.0 - 16, bedH - 24)
+                                          title:@"右床"
+                                           name:@"小丽"
+                                          color:@"#00FF87"
+                                            tag:1002];
+    [bed addSubview:right];
+
+    CGFloat cardY = CGRectGetMaxY(bed.frame) + 28;
+    [self.view addSubview:[self sleeperCard:CGRectMake(24, cardY, (iPhoneWidth - 60) / 2.0, 92) title:@"左床" name:@"小明" color:@"#00ccff" tag:1001]];
+    [self.view addSubview:[self sleeperCard:CGRectMake(36 + (iPhoneWidth - 60) / 2.0, cardY, (iPhoneWidth - 60) / 2.0, 92) title:@"右床" name:@"小丽" color:@"#00FF87" tag:1002]];
+
+    UILabel *footer = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(bed.frame) + 150, iPhoneWidth - 40, 20)];
+    footer.text = @"SMARTREST BOP · 12 AIR CHAMBERS · DUAL ZONE";
+    footer.textColor = [UIColor colorWithValue:@"#4b5563"];
+    footer.textAlignment = NSTextAlignmentCenter;
+    footer.font = [UIFont systemFontOfSize:10.0];
+    [self.view addSubview:footer];
+}
+
+- (UIButton *)sideButtonWithFrame:(CGRect)frame title:(NSString *)title name:(NSString *)name color:(NSString *)color tag:(NSInteger)tag
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = frame;
+    button.tag = tag;
+    button.layer.cornerRadius = 10.0;
+    button.layer.borderWidth = 0.8;
+    button.layer.borderColor = [UIColor colorWithValue:color alpha:0.25].CGColor;
+    [button addTarget:self action:@selector(selectSide:) forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *glow = [[UIView alloc] initWithFrame:CGRectMake((frame.size.width - 88) / 2.0, 52, 88, 120)];
+    glow.backgroundColor = [UIColor colorWithValue:color alpha:0.08];
+    glow.layer.cornerRadius = 44.0;
+    glow.userInteractionEnabled = NO;
+    [button addSubview:glow];
+
+    UILabel *person = [[UILabel alloc] initWithFrame:CGRectMake(0, 90, frame.size.width, 24)];
+    person.text = name;
+    person.textColor = [UIColor colorWithValue:color alpha:0.85];
+    person.textAlignment = NSTextAlignmentCenter;
+    person.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    [button addSubview:person];
+
+    UILabel *side = [[UILabel alloc] initWithFrame:CGRectMake(0, frame.size.height - 44, frame.size.width, 20)];
+    side.text = title;
+    side.textColor = [UIColor whiteColor];
+    side.textAlignment = NSTextAlignmentCenter;
+    side.font = [UIFont systemFontOfSize:14.0];
+    [button addSubview:side];
+    return button;
+}
+
+- (UIButton *)sleeperCard:(CGRect)frame title:(NSString *)title name:(NSString *)name color:(NSString *)color tag:(NSInteger)tag
+{
+    UIButton *card = [UIButton buttonWithType:UIButtonTypeCustom];
+    card.frame = frame;
+    card.tag = tag;
+    card.backgroundColor = [UIColor colorWithValue:@"#0a0a0f"];
+    card.layer.cornerRadius = 16.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:@"#1a1a22"].CGColor;
+    [card addTarget:self action:@selector(selectSide:) forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(16, 18, 8, 8)];
+    dot.backgroundColor = [UIColor colorWithValue:color];
+    dot.layer.cornerRadius = 4.0;
+    [card addSubview:dot];
+
+    UILabel *side = [[UILabel alloc] initWithFrame:CGRectMake(32, 12, frame.size.width - 48, 20)];
+    side.text = title;
+    side.textColor = [UIColor whiteColor];
+    side.font = [UIFont systemFontOfSize:14.0];
+    [card addSubview:side];
+
+    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(16, 48, frame.size.width - 32, 18)];
+    status.text = [NSString stringWithFormat:@"%@ · 睡眠中", name];
+    status.textColor = [UIColor colorWithValue:@"#6b7280"];
+    status.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:status];
+    return card;
+}
+
+- (void)selectSide:(UIButton *)sender
+{
+    NSString *side = sender.tag == 1001 ? @"left" : @"right";
+    NSString *bedSide = sender.tag == 1001 ? @"01" : @"02";
+    [[NSUserDefaults standardUserDefaults] setObject:side forKey:@"selected_bed_side"];
+    [[NSUserDefaults standardUserDefaults] setObject:bedSide forKey:@"selected_bed_side_code"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    SceneDelegate *app = [QuickTools currentSceneDelegate];
+    [app changeYellowController];
+}
+
+- (void)back
+{
+    [self.navigationController popViewControllerAnimated:YES];
+}
 
 @end
 
@@ -263,8 +425,8 @@ typedef NS_ENUM(NSInteger, LoginMode) {
 - (void)login
 {
     [MJProgressHUD onlyShowMessage:@"登录成功" afterDelay:1.0 showAddTo:self.view];
-    SceneDelegate *app = [QuickTools currentSceneDelegate];
-    [app changeYellowController];
+    LoginBedSelectController *bedVC = [[LoginBedSelectController alloc] init];
+    [self.navigationController pushViewController:bedVC animated:YES];
 }
 
 #pragma mark - 注册 / 找回密码

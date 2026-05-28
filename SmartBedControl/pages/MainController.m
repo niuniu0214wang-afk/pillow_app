@@ -148,7 +148,7 @@
     [super viewDidLoad];
     self.view.backgroundColor = mainColor;
     
-    _side = @"01";
+    _side = [[NSUserDefaults standardUserDefaults] objectForKey:@"selected_bed_side_code"] ?: @"01";
     _bleManager = [BLEManager shareInstance];
     _controlCenter = [ControlCenter shareInstance];
     _bleManager.delegate = self;
@@ -249,6 +249,10 @@
     _rightBtn.titleLabel.font = [UIFont systemFontOfSize:12.0];
     [_rightBtn addTarget:self action:@selector(changeBedSide:) forControlEvents:UIControlEventTouchUpInside];
     [bedSideCapsule addSubview:_rightBtn];
+    if ([_side isEqualToString:@"02"]) {
+        _leftBtn.selected = NO;
+        _rightBtn.selected = YES;
+    }
 
     [_leftBtn setTitle:[self bedDisplayNameForSide:@"01"] forState:UIControlStateNormal];
     [_rightBtn setTitle:[self bedDisplayNameForSide:@"02"] forState:UIControlStateNormal];
