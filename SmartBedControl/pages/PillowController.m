@@ -165,7 +165,7 @@
     [self.view addSubview:controlLabel];
 
 
-    UIView *testView = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(controlLabel.frame) + 20, iPhoneWidth - 40, 350)];
+    UIView *testView = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(controlLabel.frame) + 20, iPhoneWidth - 40, 410)];
     testView.backgroundColor = [UIColor colorWithValue:@"#11111111"];
     testView.layer.cornerRadius = 20.0;
     testView.layer.masksToBounds = YES;
@@ -262,7 +262,7 @@
 
 
 
-    UIView *controlBgView = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(controlLabel.frame) + 20, iPhoneWidth - 40, 380)];
+    UIView *controlBgView = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(controlLabel.frame) + 20, iPhoneWidth - 40, 500)];
     controlBgView.backgroundColor = [UIColor colorWithValue:@"#11111111"];
     controlBgView.layer.cornerRadius = 20.0;
     controlBgView.layer.masksToBounds = YES;
@@ -339,7 +339,29 @@
     [adviceBtn addTarget:self action:@selector(showHeightAdvice) forControlEvents:UIControlEventTouchUpInside];
     [controlBgView addSubview:adviceBtn];
 
+    UILabel *memoryTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(adviceBtn.frame) + 18, controlBgView.frame.size.width - 40, 18)];
+    memoryTitle.text = @"睡姿记忆模式";
+    memoryTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    memoryTitle.font = [UIFont systemFontOfSize:12.0];
+    [controlBgView addSubview:memoryTitle];
+
+    NSArray *memoryModes = @[@"午睡模式", @"侧睡舒适", @"新增记忆"];
+    for (NSInteger i = 0; i < memoryModes.count; i++) {
+        UIButton *modeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        modeBtn.frame = CGRectMake(20 + i * ((controlBgView.frame.size.width - 52) / 3.0 + 6), CGRectGetMaxY(memoryTitle.frame) + 10, (controlBgView.frame.size.width - 52) / 3.0, 38);
+        modeBtn.layer.cornerRadius = 19.0;
+        modeBtn.layer.borderWidth = 1.0;
+        modeBtn.layer.borderColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#27272a") alpha:(i == 2 ? 0.35 : 1.0)].CGColor;
+        modeBtn.backgroundColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#18181b") alpha:(i == 2 ? 0.10 : 1.0)];
+        [modeBtn setTitle:memoryModes[i] forState:UIControlStateNormal];
+        [modeBtn setTitleColor:[UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#9ca3af")] forState:UIControlStateNormal];
+        modeBtn.titleLabel.font = [UIFont systemFontOfSize:12.0];
+        [modeBtn addTarget:self action:@selector(showMemoryModeFlow:) forControlEvents:UIControlEventTouchUpInside];
+        [controlBgView addSubview:modeBtn];
+    }
+
     saveBtn.frame = CGRectMake(iPhoneWidth/2 - 171, CGRectGetMaxY(controlBgView.frame) + 18, 342, 56);
+    [self rebuildReactManualPanel];
 
 }
 
@@ -425,6 +447,24 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)showMemoryModeFlow:(UIButton *)sender
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"睡姿记忆模式"
+                                                                   message:@"按照网页流程：先命名模式，再分别记录侧睡高度和仰睡高度，最多保存 4 个常用模式。"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.placeholder = @"例如：午睡模式";
+        textField.text = sender.currentTitle;
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"保存当前高度" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSString *name = alert.textFields.firstObject.text.length > 0 ? alert.textFields.firstObject.text : @"睡姿模式";
+        [sender setTitle:name forState:UIControlStateNormal];
+        [MJProgressHUD onlyShowMessage:@"记忆完成" afterDelay:1.0 showAddTo:self.view];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)showPillowHelp
 {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Pillow Control"
@@ -432,6 +472,99 @@
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)rebuildReactManualPanel
+{
+    [self.manualPanelView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, 18, self.manualPanelView.bounds.size.width - 40, 18)];
+    title.text = @"气囊压力";
+    title.textColor = [UIColor colorWithValue:@"#6b7280"];
+    title.font = [UIFont systemFontOfSize:12.0];
+    [self.manualPanelView addSubview:title];
+
+    NSArray *rows = @[
+        @[@"后枕分区", @34],
+        @[@"左边区", @31],
+        @[@"左中区", @36],
+        @[@"右中区", @28],
+        @[@"右边区", @29]
+    ];
+
+    CGFloat y = 48.0;
+    for (NSInteger i = 0; i < rows.count; i++) {
+        NSArray *row = rows[i];
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 52)];
+        card.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
+        card.layer.cornerRadius = 12.0;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.10].CGColor;
+        [self.manualPanelView addSubview:card];
+
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 8, 90, 16)];
+        label.text = row[0];
+        label.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        label.font = [UIFont systemFontOfSize:12.0];
+        [card addSubview:label];
+
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(card.bounds.size.width - 58, 8, 42, 16)];
+        value.tag = 3000 + i;
+        value.text = [NSString stringWithFormat:@"%@", row[1]];
+        value.textColor = [UIColor whiteColor];
+        value.textAlignment = NSTextAlignmentRight;
+        value.font = [UIFont systemFontOfSize:12.0];
+        [card addSubview:value];
+
+        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(12, 26, card.bounds.size.width - 24, 20)];
+        slider.minimumValue = 0;
+        slider.maximumValue = 60;
+        slider.value = [row[1] floatValue];
+        slider.minimumTrackTintColor = [self pillowPressureColor:slider.value];
+        slider.maximumTrackTintColor = [UIColor colorWithValue:@"#ffffff" alpha:0.08];
+        slider.thumbTintColor = [UIColor whiteColor];
+        slider.tag = 3100 + i;
+        [slider addTarget:self action:@selector(pressureSliderChanged:) forControlEvents:UIControlEventValueChanged];
+        [card addSubview:slider];
+
+        y += 60.0;
+    }
+
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 4, self.manualPanelView.bounds.size.width - 40, 36)];
+    hint.text = @"低压为绿色，中段为蓝色，高压为红色；调整任一区域会立即下发到枕头。";
+    hint.textColor = [UIColor colorWithValue:@"#4b5563"];
+    hint.font = [UIFont systemFontOfSize:11.0];
+    hint.numberOfLines = 0;
+    [self.manualPanelView addSubview:hint];
+}
+
+- (UIColor *)pillowPressureColor:(CGFloat)value
+{
+    if (value >= 45.0) {
+        return [UIColor colorWithValue:@"#ef4444"];
+    }
+    if (value >= 30.0) {
+        return [UIColor colorWithValue:@"#00d4ff"];
+    }
+    return [UIColor colorWithValue:@"#00FF87"];
+}
+
+- (void)pressureSliderChanged:(UISlider *)slider
+{
+    NSInteger index = slider.tag - 3100;
+    UILabel *valueLabel = (UILabel *)[self.manualPanelView viewWithTag:3000 + index];
+    int value = (int)roundf(slider.value);
+    valueLabel.text = [NSString stringWithFormat:@"%d", value];
+    slider.minimumTrackTintColor = [self pillowPressureColor:value];
+
+    if (index == 0) {
+        NSData *data = [ControlCenter controlPillowArea:1 pressureValue:value];
+        [[BLEManager shareInstance] didSendMessageToDevice:data];
+        return;
+    }
+
+    NSData *data = [ControlCenter controlPillowAirBag:(int)index pressureValue:value];
+    [[BLEManager shareInstance] didSendMessageToDevice:data];
 }
 
 /*

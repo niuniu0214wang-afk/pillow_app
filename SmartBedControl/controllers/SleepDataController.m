@@ -122,6 +122,10 @@
 
 - (void)buildUI {
     SleepDayData *day = self.currentDayData;
+    if (self.currentMode == PillowNormal) {
+        [self buildPillowReportUI];
+        return;
+    }
 
     // ── 标题栏 ──
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, STATUS_BAR_HEIGHT, 150, 30)];
@@ -405,6 +409,350 @@
     _scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(aiCard.frame) + 30);
 
     [self buildWeekDataView];
+}
+
+- (void)buildPillowReportUI
+{
+    BedModel *bed = [DataCenter shareInstance].connectedBed;
+    NSString *deviceName = bed.bedName.length > 0 ? bed.bedName : @"智能枕头";
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, STATUS_BAR_HEIGHT, 160, 30)];
+    titleLabel.text = @"枕头睡眠报告";
+    titleLabel.textColor = [UIColor whiteColor];
+    titleLabel.font = [UIFont systemFontOfSize:18.0 weight:UIFontWeightLight];
+    [self.view addSubview:titleLabel];
+
+    UILabel *deviceLabel = [[UILabel alloc] initWithFrame:CGRectMake(iPhoneWidth - 170, STATUS_BAR_HEIGHT, 150, 16)];
+    deviceLabel.text = deviceName;
+    deviceLabel.textColor = [UIColor whiteColor];
+    deviceLabel.textAlignment = NSTextAlignmentRight;
+    deviceLabel.font = [UIFont systemFontOfSize:13.0];
+    [self.view addSubview:deviceLabel];
+
+    UILabel *subLabel = [[UILabel alloc] initWithFrame:CGRectMake(iPhoneWidth - 190, STATUS_BAR_HEIGHT + 17, 170, 14)];
+    subLabel.text = @"鼾声干预报告";
+    subLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+    subLabel.textAlignment = NSTextAlignmentRight;
+    subLabel.font = [UIFont systemFontOfSize:10.0];
+    [self.view addSubview:subLabel];
+
+    _btnBG = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(titleLabel.frame) + 16, iPhoneWidth - 40, 48)];
+    _btnBG.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    _btnBG.layer.cornerRadius = 14.0;
+    _btnBG.layer.masksToBounds = YES;
+    [self.view addSubview:_btnBG];
+
+    _dayBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    _dayBtn.frame = CGRectMake(4, 4, _btnBG.frame.size.width / 2.0 - 6, 40);
+    _dayBtn.layer.cornerRadius = 10.0;
+    _dayBtn.layer.masksToBounds = YES;
+    [_dayBtn setTitle:@"日报" forState:UIControlStateNormal];
+    [_dayBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
+    [_dayBtn setTitleColor:[UIColor colorWithValue:@"#6b7280"] forState:UIControlStateNormal];
+    [_dayBtn setBackgroundImage:[[ToolHexManager sharedManager] imageWithColor:[UIColor colorWithValue:@"#1a1a1a"]] forState:UIControlStateSelected];
+    [_dayBtn setBackgroundImage:[[ToolHexManager sharedManager] imageWithColor:[UIColor clearColor]] forState:UIControlStateNormal];
+    [_dayBtn addTarget:self action:@selector(dayData) forControlEvents:UIControlEventTouchUpInside];
+    _dayBtn.selected = YES;
+    [_btnBG addSubview:_dayBtn];
+
+    _weekBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    _weekBtn.frame = CGRectMake(CGRectGetMaxX(_dayBtn.frame) + 4, 4, _btnBG.frame.size.width / 2.0 - 6, 40);
+    _weekBtn.layer.cornerRadius = 10.0;
+    _weekBtn.layer.masksToBounds = YES;
+    [_weekBtn setTitle:@"周报" forState:UIControlStateNormal];
+    [_weekBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
+    [_weekBtn setTitleColor:[UIColor colorWithValue:@"#6b7280"] forState:UIControlStateNormal];
+    [_weekBtn setBackgroundImage:[[ToolHexManager sharedManager] imageWithColor:[UIColor colorWithValue:@"#1a1a1a"]] forState:UIControlStateSelected];
+    [_weekBtn setBackgroundImage:[[ToolHexManager sharedManager] imageWithColor:[UIColor clearColor]] forState:UIControlStateNormal];
+    [_weekBtn addTarget:self action:@selector(weekData) forControlEvents:UIControlEventTouchUpInside];
+    [_btnBG addSubview:_weekBtn];
+
+    _scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_btnBG.frame) + 10, iPhoneWidth, iPhoneHeight - TAB_BAR_HEIGHT - CGRectGetMaxY(_btnBG.frame) - 10)];
+    _scrollView.backgroundColor = [UIColor clearColor];
+    [self.view addSubview:_scrollView];
+
+    UILabel *score = [[UILabel alloc] initWithFrame:CGRectMake(0, 18, iPhoneWidth, 62)];
+    score.text = @"82";
+    score.textColor = [UIColor whiteColor];
+    score.textAlignment = NSTextAlignmentCenter;
+    score.font = [UIFont systemFontOfSize:52.0 weight:UIFontWeightUltraLight];
+    [_scrollView addSubview:score];
+
+    UILabel *scoreLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(score.frame), iPhoneWidth, 18)];
+    scoreLabel.text = @"睡眠评分";
+    scoreLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+    scoreLabel.textAlignment = NSTextAlignmentCenter;
+    scoreLabel.font = [UIFont systemFontOfSize:11.0];
+    [_scrollView addSubview:scoreLabel];
+
+    UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(scoreLabel.frame) + 6, iPhoneWidth, 18)];
+    timeLabel.text = @"过去 12 小时睡眠报告 · 22:00 - 06:00";
+    timeLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+    timeLabel.textAlignment = NSTextAlignmentCenter;
+    timeLabel.font = [UIFont systemFontOfSize:11.0];
+    [_scrollView addSubview:timeLabel];
+
+    UIView *postureCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(timeLabel.frame) + 18, iPhoneWidth - 40, 128)];
+    postureCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    postureCard.layer.cornerRadius = 16.0;
+    postureCard.layer.borderWidth = 1.0;
+    postureCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_scrollView addSubview:postureCard];
+
+    UILabel *postureTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, 160, 16)];
+    postureTitle.text = @"睡姿时长分布";
+    postureTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    postureTitle.font = [UIFont systemFontOfSize:12.0];
+    [postureCard addSubview:postureTitle];
+
+    NSArray *posture = @[
+        @[@"仰睡时间", @"2h 24m", @"30%", @"#06b6d4", @0.30],
+        @[@"侧睡时间", @"4h 38m", @"58%", @"#8b5cf6", @0.58],
+        @[@"离枕", @"58 min", @"12%", @"#6b7280", @0.12]
+    ];
+    CGFloat barX = 16.0;
+    CGFloat barY = 42.0;
+    CGFloat barW = postureCard.bounds.size.width - 32.0;
+    for (NSArray *item in posture) {
+        CGFloat width = barW * [item[4] floatValue];
+        UIView *seg = [[UIView alloc] initWithFrame:CGRectMake(barX, barY, width, 8)];
+        seg.backgroundColor = [UIColor colorWithValue:item[3]];
+        [postureCard addSubview:seg];
+        barX += width;
+    }
+    for (NSInteger i = 0; i < posture.count; i++) {
+        NSArray *item = posture[i];
+        CGFloat x = 16 + i * ((postureCard.bounds.size.width - 32) / 3.0);
+        CGFloat w = (postureCard.bounds.size.width - 32) / 3.0;
+        [self addPillowMetricToView:postureCard frame:CGRectMake(x, 66, w, 46) title:item[0] value:item[1] detail:item[2] color:item[3]];
+    }
+
+    CGFloat snoreY = CGRectGetMaxY(postureCard.frame) + 18;
+    UILabel *snoreTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, snoreY, 160, 16)];
+    snoreTitle.text = @"鼾声分析";
+    snoreTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    snoreTitle.font = [UIFont systemFontOfSize:11.0];
+    [_scrollView addSubview:snoreTitle];
+
+    NSArray *metrics = @[
+        @[@"鼾声总时长", @"42 min"],
+        @[@"打鼾频次", @"18"],
+        @[@"鼾声强度峰值", @"72 dB"],
+        @[@"干预总次数", @"8"]
+    ];
+    CGFloat cardW = (iPhoneWidth - 50) / 2.0;
+    for (NSInteger i = 0; i < metrics.count; i++) {
+        NSArray *metric = metrics[i];
+        NSInteger row = i / 2;
+        NSInteger col = i % 2;
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20 + col * (cardW + 10), CGRectGetMaxY(snoreTitle.frame) + 10 + row * 70, cardW, 60)];
+        card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+        card.layer.cornerRadius = 14.0;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+        [_scrollView addSubview:card];
+        [self addPillowMetricToView:card frame:CGRectMake(14, 8, cardW - 28, 42) title:metric[0] value:metric[1] detail:nil color:@"#00d4ff"];
+    }
+
+    UIView *rateCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(snoreTitle.frame) + 154, iPhoneWidth - 40, 70)];
+    rateCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    rateCard.layer.cornerRadius = 16.0;
+    rateCard.layer.borderWidth = 1.0;
+    rateCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_scrollView addSubview:rateCard];
+
+    UILabel *rateTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 12, 160, 18)];
+    rateTitle.text = @"有效干预率";
+    rateTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    rateTitle.font = [UIFont systemFontOfSize:12.0];
+    [rateCard addSubview:rateTitle];
+
+    UILabel *rateValue = [[UILabel alloc] initWithFrame:CGRectMake(rateCard.bounds.size.width - 62, 12, 46, 18)];
+    rateValue.text = @"83%";
+    rateValue.textAlignment = NSTextAlignmentRight;
+    rateValue.textColor = [UIColor colorWithValue:@"#00d4ff"];
+    rateValue.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    [rateCard addSubview:rateValue];
+
+    UIView *rateTrack = [[UIView alloc] initWithFrame:CGRectMake(16, 42, rateCard.bounds.size.width - 32, 8)];
+    rateTrack.backgroundColor = [UIColor colorWithValue:@"#27272a"];
+    rateTrack.layer.cornerRadius = 4.0;
+    [rateCard addSubview:rateTrack];
+    UIView *rateFill = [[UIView alloc] initWithFrame:CGRectMake(0, 0, rateTrack.bounds.size.width * 0.83, 8)];
+    rateFill.backgroundColor = [UIColor colorWithValue:@"#00d4ff"];
+    rateFill.layer.cornerRadius = 4.0;
+    [rateTrack addSubview:rateFill];
+
+    UIView *timeline = [self pillowTimelineCard:CGRectMake(20, CGRectGetMaxY(rateCard.frame) + 14, iPhoneWidth - 40, 132)];
+    [_scrollView addSubview:timeline];
+
+    UIView *aiCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(timeline.frame) + 14, iPhoneWidth - 40, 118)];
+    aiCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    aiCard.layer.cornerRadius = 16.0;
+    aiCard.layer.borderWidth = 1.0;
+    aiCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_scrollView addSubview:aiCard];
+
+    UILabel *aiTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, aiCard.bounds.size.width - 32, 18)];
+    aiTitle.text = @"AI 干预分析";
+    aiTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    aiTitle.font = [UIFont systemFontOfSize:12.0];
+    [aiCard addSubview:aiTitle];
+
+    UILabel *aiText = [[UILabel alloc] initWithFrame:CGRectMake(16, 40, aiCard.bounds.size.width - 32, 60)];
+    aiText.text = @"昨夜鼾声波动较少，侧睡与仰睡切换稳定。智能枕执行了多次柔性干预，帮助维持呼吸顺畅与颈部支撑。";
+    aiText.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    aiText.font = [UIFont systemFontOfSize:12.0];
+    aiText.numberOfLines = 0;
+    [aiCard addSubview:aiText];
+
+    _scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(aiCard.frame) + 30);
+    [self buildPillowWeekDataView];
+}
+
+- (void)addPillowMetricToView:(UIView *)view frame:(CGRect)frame title:(NSString *)title value:(NSString *)value detail:(NSString *)detail color:(NSString *)color
+{
+    UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(frame.origin.x, frame.origin.y, frame.size.width, 18)];
+    valueLabel.text = value;
+    valueLabel.textColor = [UIColor whiteColor];
+    valueLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightLight];
+    [view addSubview:valueLabel];
+
+    UILabel *detailLabel = [[UILabel alloc] initWithFrame:CGRectMake(frame.origin.x, frame.origin.y + 20, frame.size.width, 13)];
+    detailLabel.text = detail ?: title;
+    detailLabel.textColor = [UIColor colorWithValue:color];
+    detailLabel.font = [UIFont systemFontOfSize:10.0];
+    [view addSubview:detailLabel];
+
+    if (detail) {
+        UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(frame.origin.x, frame.origin.y + 34, frame.size.width, 12)];
+        titleLabel.text = title;
+        titleLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
+        titleLabel.font = [UIFont systemFontOfSize:10.0];
+        [view addSubview:titleLabel];
+    }
+}
+
+- (UIView *)pillowTimelineCard:(CGRect)frame
+{
+    UIView *card = [[UIView alloc] initWithFrame:frame];
+    card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    card.layer.cornerRadius = 16.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, frame.size.width - 32, 16)];
+    title.text = @"鼾声干预时间轴";
+    title.textColor = [UIColor colorWithValue:@"#6b7280"];
+    title.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:title];
+
+    NSArray *levels = @[
+        @[@0.18, @"#22c55e"], @[@0.10, @"#eab308"], @[@0.16, @"#1f1f1f"],
+        @[@0.08, @"#f97316"], @[@0.15, @"#1f1f1f"], @[@0.06, @"#ef4444"],
+        @[@0.12, @"#22c55e"], @[@0.15, @"#1f1f1f"]
+    ];
+    CGFloat x = 16.0;
+    CGFloat y = 48.0;
+    CGFloat totalW = frame.size.width - 32.0;
+    for (NSArray *level in levels) {
+        CGFloat w = totalW * [level[0] floatValue];
+        UIView *seg = [[UIView alloc] initWithFrame:CGRectMake(x, y, w, 10)];
+        seg.backgroundColor = [UIColor colorWithValue:level[1]];
+        [card addSubview:seg];
+        x += w + 1;
+    }
+
+    NSArray *marks = @[@0.28, @0.48, @0.67, @0.75, @0.82, @0.88, @0.93, @0.96];
+    for (NSNumber *mark in marks) {
+        UIView *line = [[UIView alloc] initWithFrame:CGRectMake(16 + totalW * mark.floatValue, y - 7, 1, 24)];
+        line.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.5];
+        [card addSubview:line];
+    }
+
+    NSArray *labels = @[@"未打鼾", @"轻声", @"一般", @"大声", @"超大声"];
+    NSArray *colors = @[@"#1f1f1f", @"#22c55e", @"#eab308", @"#f97316", @"#ef4444"];
+    for (NSInteger i = 0; i < labels.count; i++) {
+        CGFloat lx = 16 + (i % 3) * ((frame.size.width - 32) / 3.0);
+        CGFloat ly = 78 + (i / 3) * 22;
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(lx, ly + 4, 7, 7)];
+        dot.layer.cornerRadius = 3.5;
+        dot.backgroundColor = [UIColor colorWithValue:colors[i]];
+        [card addSubview:dot];
+
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(lx + 12, ly, 70, 15)];
+        label.text = labels[i];
+        label.textColor = [UIColor colorWithValue:@"#6b7280"];
+        label.font = [UIFont systemFontOfSize:10.0];
+        [card addSubview:label];
+    }
+    return card;
+}
+
+- (void)buildPillowWeekDataView
+{
+    _weekDataView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_btnBG.frame) + 10, iPhoneWidth, iPhoneHeight - TAB_BAR_HEIGHT - CGRectGetMaxY(_btnBG.frame) - 10)];
+    _weekDataView.backgroundColor = [UIColor clearColor];
+    _weekDataView.hidden = YES;
+    [self.view addSubview:_weekDataView];
+
+    CGFloat cardW = (iPhoneWidth - 50) / 2.0;
+    NSArray *metrics = @[
+        @[@"周均评分", @"79"],
+        @[@"鼾声总时长", @"4.5h"],
+        @[@"干预总次数", @"154"],
+        @[@"有效干预率", @"78%"]
+    ];
+    for (NSInteger i = 0; i < metrics.count; i++) {
+        NSArray *metric = metrics[i];
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20 + (i % 2) * (cardW + 10), 10 + (i / 2) * 78, cardW, 66)];
+        card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+        card.layer.cornerRadius = 16.0;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+        [_weekDataView addSubview:card];
+        [self addPillowMetricToView:card frame:CGRectMake(14, 12, cardW - 28, 40) title:metric[0] value:metric[1] detail:nil color:@"#6b7280"];
+    }
+
+    SleepChartView *quality = [[SleepChartView alloc] initWithFrame:CGRectMake(0, 178, iPhoneWidth, 180)];
+    quality.title = @"睡眠质量趋势";
+    quality.color = [UIColor colorWithValue:@"#00d4ff"];
+    quality.dataSource = @[@72,@68,@75,@80,@77,@82,@79];
+    [_weekDataView addSubview:quality];
+
+    SleepChartView *snore = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(quality.frame) + 14, iPhoneWidth, 180)];
+    snore.title = @"鼾声变化趋势";
+    snore.color = [UIColor colorWithValue:@"#f97316"];
+    snore.dataSource = @[@45,@52,@38,@30,@42,@28,@35];
+    [_weekDataView addSubview:snore];
+
+    SleepChartView *intervention = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(snore.frame) + 14, iPhoneWidth, 180)];
+    intervention.title = @"干预效果趋势";
+    intervention.color = [UIColor colorWithValue:@"#22c55e"];
+    intervention.dataSource = @[@60,@55,@70,@80,@65,@85,@78];
+    [_weekDataView addSubview:intervention];
+
+    UIView *summaryCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(intervention.frame) + 18, iPhoneWidth - 40, 150)];
+    summaryCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    summaryCard.layer.cornerRadius = 16.0;
+    summaryCard.layer.borderWidth = 1.0;
+    summaryCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_weekDataView addSubview:summaryCard];
+
+    UILabel *summaryTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 16, summaryCard.bounds.size.width - 32, 18)];
+    summaryTitle.text = @"本周总结";
+    summaryTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    summaryTitle.font = [UIFont systemFontOfSize:12.0];
+    [summaryCard addSubview:summaryTitle];
+
+    UILabel *summary = [[UILabel alloc] initWithFrame:CGRectMake(16, 42, summaryCard.bounds.size.width - 32, 92)];
+    summary.text = @"• 本周枕头干预主要集中在后半夜，整体节奏较平稳。\n• 仰卧与侧卧切换后的支撑恢复速度较快。\n• 建议继续保持当前枕高设置，并观察鼾声峰值变化。";
+    summary.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    summary.font = [UIFont systemFontOfSize:12.0];
+    summary.numberOfLines = 0;
+    [summaryCard addSubview:summary];
+
+    _weekDataView.contentSize = CGSizeMake(0, CGRectGetMaxY(summaryCard.frame) + 30);
 }
 
 

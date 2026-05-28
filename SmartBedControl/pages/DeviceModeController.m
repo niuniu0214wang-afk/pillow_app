@@ -307,10 +307,7 @@
         id item = self.displayDevices[indexPath.item];
         if ([item isKindOfClass:[NSDictionary class]]) {
             NSDictionary *device = (NSDictionary *)item;
-            SearchController *searchVC = [[SearchController alloc] init];
-            searchVC.deviceName = device[@"prefix"];
-            self.manager.deviceName = searchVC.deviceName;
-            [self.navigationController pushViewController:searchVC animated:YES];
+            [self activateCatalogDevice:device];
             return;
         }
         BedModel *bed = item;
@@ -331,6 +328,31 @@
     searchVC.deviceName = (self.selectIndex == 60) ? @"MJ-1" : @"MJ-2";
     self.manager.deviceName = searchVC.deviceName;
     [self.navigationController pushViewController:searchVC animated:YES];
+}
+
+- (void)activateCatalogDevice:(NSDictionary *)device
+{
+    BedModel *bed = [[BedModel alloc] init];
+    BOOL isPillow = self.selectIndex != 60;
+    NSString *model = device[@"model"] ?: @"";
+    bed.mode = isPillow ? PillowNormal : ([model containsString:@"2000"] || [model containsString:@"3000"] ? BedPro : BedNormal);
+    bed.bedName = device[@"name"] ?: (isPillow ? @"DreamPillow Pro" : @"AI Adaptive Mattress Pro");
+    bed.mac = [NSString stringWithFormat:@"demo-%@", model.length > 0 ? model : bed.bedName];
+    bed.state = CBPeripheralStateConnected;
+
+    [DataCenter shareInstance].connectedBed = bed;
+    [BLEManager shareInstance].mode = bed.mode;
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"CurrentDeviceDidChangeNotification" object:nil];
+
+    if (isPillow) {
+        PillowController *pillowVC = [[PillowController alloc] init];
+        [self.navigationController pushViewController:pillowVC animated:YES];
+        return;
+    }
+
+    MainController *mainVC = [[MainController alloc] init];
+    mainVC.bed = bed;
+    [self.navigationController pushViewController:mainVC animated:YES];
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath {
