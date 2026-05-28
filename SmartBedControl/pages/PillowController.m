@@ -68,6 +68,7 @@
     poseCapsule.layer.cornerRadius = 10.0;
     poseCapsule.layer.masksToBounds = YES;
     [self.view addSubview:poseCapsule];
+    poseCapsule.hidden = YES;
 
     _leftBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     _leftBtn.frame = CGRectMake(4, 3, 48, 24);
@@ -318,7 +319,12 @@
     [controlBgView addSubview:_highBtn];
 
 
-    _sideLySlider = [[PillowSlider alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_highBtn.frame) + 15, iPhoneWidth - 40, 130)];
+    highLabel.hidden = YES;
+    _lowBtn.hidden = YES;
+    _midBtn.hidden = YES;
+    _highBtn.hidden = YES;
+
+    _sideLySlider = [[PillowSlider alloc] initWithFrame:CGRectMake(0, 24, iPhoneWidth - 40, 130)];
     _sideLySlider.title = @"侧睡高度";
     [controlBgView addSubview:_sideLySlider];
 
@@ -358,6 +364,12 @@
         modeBtn.titleLabel.font = [UIFont systemFontOfSize:12.0];
         [modeBtn addTarget:self action:@selector(showMemoryModeFlow:) forControlEvents:UIControlEventTouchUpInside];
         [controlBgView addSubview:modeBtn];
+    }
+    memoryTitle.hidden = YES;
+    for (UIView *subview in controlBgView.subviews) {
+        if ([subview isKindOfClass:[UIButton class]] && CGRectGetMinY(subview.frame) > CGRectGetMaxY(memoryTitle.frame)) {
+            subview.hidden = YES;
+        }
     }
 
     saveBtn.frame = CGRectMake(iPhoneWidth/2 - 171, CGRectGetMaxY(controlBgView.frame) + 18, 342, 56);
@@ -478,7 +490,51 @@
 {
     [self.manualPanelView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
 
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, 18, self.manualPanelView.bounds.size.width - 40, 18)];
+    UILabel *overallTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, 14, self.manualPanelView.bounds.size.width - 40, 18)];
+    overallTitle.text = @"整体高度";
+    overallTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    overallTitle.font = [UIFont systemFontOfSize:12.0];
+    [self.manualPanelView addSubview:overallTitle];
+
+    NSArray *heightModes = @[@"低", @"中", @"高"];
+    CGFloat modeW = (self.manualPanelView.bounds.size.width - 52) / 3.0;
+    for (NSInteger i = 0; i < heightModes.count; i++) {
+        UIButton *heightBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        heightBtn.frame = CGRectMake(14 + i * (modeW + 6), CGRectGetMaxY(overallTitle.frame) + 8, modeW, 36);
+        heightBtn.layer.cornerRadius = 12.0;
+        heightBtn.layer.borderWidth = 1.0;
+        heightBtn.layer.borderColor = [UIColor colorWithValue:(i == 1 ? @"#00d4ff" : @"#27272a") alpha:(i == 1 ? 0.40 : 1.0)].CGColor;
+        heightBtn.backgroundColor = [UIColor colorWithValue:(i == 1 ? @"#00d4ff" : @"#18181b") alpha:(i == 1 ? 0.10 : 1.0)];
+        [heightBtn setTitle:heightModes[i] forState:UIControlStateNormal];
+        [heightBtn setTitleColor:[UIColor colorWithValue:(i == 1 ? @"#00d4ff" : @"#9ca3af")] forState:UIControlStateNormal];
+        heightBtn.titleLabel.font = [UIFont systemFontOfSize:13.0];
+        [heightBtn addTarget:self action:@selector(manualHeightModeTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.manualPanelView addSubview:heightBtn];
+    }
+
+    UILabel *memoryTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(overallTitle.frame) + 56, self.manualPanelView.bounds.size.width - 40, 18)];
+    memoryTitle.text = @"睡姿记忆模式";
+    memoryTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    memoryTitle.font = [UIFont systemFontOfSize:12.0];
+    [self.manualPanelView addSubview:memoryTitle];
+
+    NSArray *memoryModes = @[@"午睡模式", @"侧睡舒适", @"新增记忆"];
+    CGFloat chipW = (self.manualPanelView.bounds.size.width - 52) / 3.0;
+    for (NSInteger i = 0; i < memoryModes.count; i++) {
+        UIButton *modeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        modeBtn.frame = CGRectMake(14 + i * (chipW + 6), CGRectGetMaxY(memoryTitle.frame) + 8, chipW, 34);
+        modeBtn.layer.cornerRadius = 17.0;
+        modeBtn.layer.borderWidth = 1.0;
+        modeBtn.layer.borderColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#27272a") alpha:(i == 2 ? 0.35 : 1.0)].CGColor;
+        modeBtn.backgroundColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#18181b") alpha:(i == 2 ? 0.10 : 1.0)];
+        [modeBtn setTitle:memoryModes[i] forState:UIControlStateNormal];
+        [modeBtn setTitleColor:[UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#9ca3af")] forState:UIControlStateNormal];
+        modeBtn.titleLabel.font = [UIFont systemFontOfSize:11.0];
+        [modeBtn addTarget:self action:@selector(showMemoryModeFlow:) forControlEvents:UIControlEventTouchUpInside];
+        [self.manualPanelView addSubview:modeBtn];
+    }
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(memoryTitle.frame) + 54, self.manualPanelView.bounds.size.width - 40, 18)];
     title.text = @"气囊压力";
     title.textColor = [UIColor colorWithValue:@"#6b7280"];
     title.font = [UIFont systemFontOfSize:12.0];
@@ -492,23 +548,23 @@
         @[@"右边区", @29]
     ];
 
-    CGFloat y = 48.0;
+    CGFloat y = CGRectGetMaxY(title.frame) + 12;
     for (NSInteger i = 0; i < rows.count; i++) {
         NSArray *row = rows[i];
-        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 52)];
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 38)];
         card.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
         card.layer.cornerRadius = 12.0;
         card.layer.borderWidth = 1.0;
         card.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.10].CGColor;
         [self.manualPanelView addSubview:card];
 
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 8, 90, 16)];
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 5, 90, 14)];
         label.text = row[0];
         label.textColor = [UIColor colorWithValue:@"#9ca3af"];
         label.font = [UIFont systemFontOfSize:12.0];
         [card addSubview:label];
 
-        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(card.bounds.size.width - 58, 8, 42, 16)];
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(card.bounds.size.width - 58, 5, 42, 14)];
         value.tag = 3000 + i;
         value.text = [NSString stringWithFormat:@"%@", row[1]];
         value.textColor = [UIColor whiteColor];
@@ -516,7 +572,7 @@
         value.font = [UIFont systemFontOfSize:12.0];
         [card addSubview:value];
 
-        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(12, 26, card.bounds.size.width - 24, 20)];
+        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(12, 18, card.bounds.size.width - 24, 18)];
         slider.minimumValue = 0;
         slider.maximumValue = 60;
         slider.value = [row[1] floatValue];
@@ -527,10 +583,10 @@
         [slider addTarget:self action:@selector(pressureSliderChanged:) forControlEvents:UIControlEventValueChanged];
         [card addSubview:slider];
 
-        y += 60.0;
+        y += 44.0;
     }
 
-    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 4, self.manualPanelView.bounds.size.width - 40, 36)];
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 2, self.manualPanelView.bounds.size.width - 40, 28)];
     hint.text = @"低压为绿色，中段为蓝色，高压为红色；调整任一区域会立即下发到枕头。";
     hint.textColor = [UIColor colorWithValue:@"#4b5563"];
     hint.font = [UIFont systemFontOfSize:11.0];
@@ -547,6 +603,25 @@
         return [UIColor colorWithValue:@"#00d4ff"];
     }
     return [UIColor colorWithValue:@"#00FF87"];
+}
+
+- (void)manualHeightModeTapped:(UIButton *)sender
+{
+    UIView *parent = sender.superview;
+    for (UIView *subview in parent.subviews) {
+        if (![subview isKindOfClass:[UIButton class]]) {
+            continue;
+        }
+        UIButton *button = (UIButton *)subview;
+        BOOL selected = button == sender;
+        if (![button.currentTitle isEqualToString:@"低"] && ![button.currentTitle isEqualToString:@"中"] && ![button.currentTitle isEqualToString:@"高"]) {
+            continue;
+        }
+        button.backgroundColor = [UIColor colorWithValue:(selected ? @"#00d4ff" : @"#18181b") alpha:(selected ? 0.10 : 1.0)];
+        button.layer.borderColor = [UIColor colorWithValue:(selected ? @"#00d4ff" : @"#27272a") alpha:(selected ? 0.40 : 1.0)].CGColor;
+        [button setTitleColor:[UIColor colorWithValue:(selected ? @"#00d4ff" : @"#9ca3af")] forState:UIControlStateNormal];
+    }
+    [MJProgressHUD onlyShowMessage:@"整体高度已更新" afterDelay:0.8 showAddTo:self.view];
 }
 
 - (void)pressureSliderChanged:(UISlider *)slider

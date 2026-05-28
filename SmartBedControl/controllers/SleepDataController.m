@@ -586,7 +586,105 @@
     UIView *timeline = [self pillowTimelineCard:CGRectMake(20, CGRectGetMaxY(rateCard.frame) + 14, iPhoneWidth - 40, 132)];
     [_scrollView addSubview:timeline];
 
-    UIView *aiCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(timeline.frame) + 14, iPhoneWidth - 40, 118)];
+    UIView *compareCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(timeline.frame) + 14, iPhoneWidth - 40, 132)];
+    compareCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    compareCard.layer.cornerRadius = 16.0;
+    compareCard.layer.borderWidth = 1.0;
+    compareCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_scrollView addSubview:compareCard];
+
+    UILabel *compareTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, compareCard.bounds.size.width - 32, 16)];
+    compareTitle.text = @"历史对比（与前 7 日均值）";
+    compareTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    compareTitle.font = [UIFont systemFontOfSize:12.0];
+    [compareCard addSubview:compareTitle];
+
+    NSArray *compareRows = @[
+        @[@"鼾声时长", @"42min", @"均值 51min", @"↓18%"],
+        @[@"干预次数", @"8次", @"均值 11次", @"↓27%"],
+        @[@"有效干预率", @"83%", @"均值 71%", @"↑17%"]
+    ];
+    for (NSInteger i = 0; i < compareRows.count; i++) {
+        NSArray *row = compareRows[i];
+        CGFloat y = 42 + i * 28;
+        UILabel *name = [[UILabel alloc] initWithFrame:CGRectMake(16, y, 92, 16)];
+        name.text = row[0];
+        name.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        name.font = [UIFont systemFontOfSize:11.0];
+        [compareCard addSubview:name];
+
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(compareCard.bounds.size.width - 170, y, 52, 16)];
+        value.text = row[1];
+        value.textColor = [UIColor whiteColor];
+        value.textAlignment = NSTextAlignmentRight;
+        value.font = [UIFont systemFontOfSize:11.0];
+        [compareCard addSubview:value];
+
+        UILabel *avg = [[UILabel alloc] initWithFrame:CGRectMake(compareCard.bounds.size.width - 112, y, 64, 16)];
+        avg.text = row[2];
+        avg.textColor = [UIColor colorWithValue:@"#6b7280"];
+        avg.textAlignment = NSTextAlignmentRight;
+        avg.font = [UIFont systemFontOfSize:10.0];
+        [compareCard addSubview:avg];
+
+        UILabel *change = [[UILabel alloc] initWithFrame:CGRectMake(compareCard.bounds.size.width - 44, y - 1, 30, 18)];
+        change.text = row[3];
+        change.textColor = [UIColor colorWithValue:@"#22c55e"];
+        change.textAlignment = NSTextAlignmentCenter;
+        change.font = [UIFont systemFontOfSize:10.0];
+        change.backgroundColor = [UIColor colorWithValue:@"#22c55e" alpha:0.10];
+        change.layer.cornerRadius = 9.0;
+        change.layer.masksToBounds = YES;
+        [compareCard addSubview:change];
+    }
+
+    UIView *insightCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(compareCard.frame) + 14, iPhoneWidth - 40, 108)];
+    insightCard.backgroundColor = [UIColor colorWithValue:@"#0a1a2a"];
+    insightCard.layer.cornerRadius = 16.0;
+    insightCard.layer.borderWidth = 1.0;
+    insightCard.layer.borderColor = [UIColor colorWithValue:@"#1a2a3a"].CGColor;
+    [_scrollView addSubview:insightCard];
+
+    UILabel *insightTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, insightCard.bounds.size.width - 32, 16)];
+    insightTitle.text = @"温馨提示";
+    insightTitle.textColor = [UIColor colorWithValue:@"#00d4ff"];
+    insightTitle.font = [UIFont systemFontOfSize:12.0];
+    [insightCard addSubview:insightTitle];
+
+    UILabel *insight = [[UILabel alloc] initWithFrame:CGRectMake(16, 40, insightCard.bounds.size.width - 32, 52)];
+    insight.text = @"本次睡眠您有 42 分钟处于打鼾状态，占整体睡眠的 9%。系统针对本次鼾声进行了 8 次干预，总干预时长为 21 分钟。";
+    insight.textColor = [UIColor colorWithValue:@"#d1d5db"];
+    insight.font = [UIFont systemFontOfSize:12.0];
+    insight.numberOfLines = 0;
+    [insightCard addSubview:insight];
+
+    UIView *tipsCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(insightCard.frame) + 14, iPhoneWidth - 40, 118)];
+    tipsCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    tipsCard.layer.cornerRadius = 16.0;
+    tipsCard.layer.borderWidth = 1.0;
+    tipsCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [_scrollView addSubview:tipsCard];
+
+    UILabel *tipsTitle = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, tipsCard.bounds.size.width - 32, 16)];
+    tipsTitle.text = @"健康小贴士";
+    tipsTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
+    tipsTitle.font = [UIFont systemFontOfSize:12.0];
+    [tipsCard addSubview:tipsTitle];
+
+    NSArray *tips = @[
+        @"• 侧睡有助于减少鼾声，建议继续保持侧卧睡姿。",
+        @"• 睡前避免饮酒，酒精会加重打鼾症状。",
+        @"• 当前枕高设置较适合您的体型，建议继续保持。"
+    ];
+    for (NSInteger i = 0; i < tips.count; i++) {
+        UILabel *tip = [[UILabel alloc] initWithFrame:CGRectMake(16, 40 + i * 22, tipsCard.bounds.size.width - 32, 18)];
+        tip.text = tips[i];
+        tip.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        tip.font = [UIFont systemFontOfSize:11.0];
+        [tipsCard addSubview:tip];
+    }
+
+    UIView *aiCard = [[UIView alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(tipsCard.frame) + 14, iPhoneWidth - 40, 118)];
     aiCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
     aiCard.layer.cornerRadius = 16.0;
     aiCard.layer.borderWidth = 1.0;

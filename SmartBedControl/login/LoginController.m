@@ -9,6 +9,8 @@
 #import "ForgetPasswordController.h"
 #import "RegisterController.h"
 #import "../SceneDelegate.h"
+#import "../Tools/BLEManager.h"
+#import "../Tools/DataCenter.h"
 
 typedef NS_ENUM(NSInteger, LoginMode) {
     LoginModePassword,
@@ -425,6 +427,12 @@ typedef NS_ENUM(NSInteger, LoginMode) {
 - (void)login
 {
     [MJProgressHUD onlyShowMessage:@"登录成功" afterDelay:1.0 showAddTo:self.view];
+    BedMode mode = [DataCenter shareInstance].connectedBed ? [DataCenter shareInstance].connectedBed.mode : [BLEManager shareInstance].mode;
+    if (mode == PillowNormal) {
+        SceneDelegate *app = [QuickTools currentSceneDelegate];
+        [app changeYellowController];
+        return;
+    }
     LoginBedSelectController *bedVC = [[LoginBedSelectController alloc] init];
     [self.navigationController pushViewController:bedVC animated:YES];
 }
