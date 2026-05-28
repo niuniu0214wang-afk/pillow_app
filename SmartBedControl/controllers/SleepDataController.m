@@ -471,21 +471,17 @@
     _scrollView.backgroundColor = [UIColor clearColor];
     [self.view addSubview:_scrollView];
 
-    UILabel *score = [[UILabel alloc] initWithFrame:CGRectMake(0, 18, iPhoneWidth, 62)];
-    score.text = @"82";
-    score.textColor = [UIColor whiteColor];
-    score.textAlignment = NSTextAlignmentCenter;
-    score.font = [UIFont systemFontOfSize:52.0 weight:UIFontWeightUltraLight];
-    [_scrollView addSubview:score];
+    UIView *scoreRing = [self pillowScoreRingWithFrame:CGRectMake((iPhoneWidth - 160) / 2.0, 8, 160, 160) score:82];
+    [_scrollView addSubview:scoreRing];
 
-    UILabel *scoreLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(score.frame), iPhoneWidth, 18)];
+    UILabel *scoreLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(scoreRing.frame) - 28, iPhoneWidth, 18)];
     scoreLabel.text = @"睡眠评分";
     scoreLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
     scoreLabel.textAlignment = NSTextAlignmentCenter;
     scoreLabel.font = [UIFont systemFontOfSize:11.0];
     [_scrollView addSubview:scoreLabel];
 
-    UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(scoreLabel.frame) + 6, iPhoneWidth, 18)];
+    UILabel *timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(scoreRing.frame) + 4, iPhoneWidth, 18)];
     timeLabel.text = @"过去 12 小时睡眠报告 · 22:00 - 06:00";
     timeLabel.textColor = [UIColor colorWithValue:@"#6b7280"];
     timeLabel.textAlignment = NSTextAlignmentCenter;
@@ -737,6 +733,43 @@
 
     _scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(aiCard.frame) + 30);
     [self buildPillowWeekDataView];
+}
+
+- (UIView *)pillowScoreRingWithFrame:(CGRect)frame score:(NSInteger)score
+{
+    UIView *view = [[UIView alloc] initWithFrame:frame];
+    CGFloat lineWidth = 7.0;
+    CGPoint center = CGPointMake(frame.size.width / 2.0, frame.size.height / 2.0);
+    CGFloat radius = (frame.size.width - lineWidth) / 2.0 - 6.0;
+    CGFloat startAngle = -M_PI * 1.25;
+    CGFloat endAngle = M_PI * 0.25;
+
+    UIBezierPath *trackPath = [UIBezierPath bezierPathWithArcCenter:center radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
+    CAShapeLayer *track = [CAShapeLayer layer];
+    track.path = trackPath.CGPath;
+    track.fillColor = [UIColor clearColor].CGColor;
+    track.strokeColor = [UIColor colorWithValue:@"#1a1a1a"].CGColor;
+    track.lineWidth = lineWidth;
+    track.lineCap = kCALineCapRound;
+    [view.layer addSublayer:track];
+
+    CGFloat progress = MAX(0, MIN(1, score / 100.0));
+    UIBezierPath *progressPath = [UIBezierPath bezierPathWithArcCenter:center radius:radius startAngle:startAngle endAngle:startAngle + (endAngle - startAngle) * progress clockwise:YES];
+    CAShapeLayer *progressLayer = [CAShapeLayer layer];
+    progressLayer.path = progressPath.CGPath;
+    progressLayer.fillColor = [UIColor clearColor].CGColor;
+    progressLayer.strokeColor = [UIColor colorWithValue:@"#00d4ff"].CGColor;
+    progressLayer.lineWidth = lineWidth;
+    progressLayer.lineCap = kCALineCapRound;
+    [view.layer addSublayer:progressLayer];
+
+    UILabel *scoreLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 46, frame.size.width, 58)];
+    scoreLabel.text = [NSString stringWithFormat:@"%ld", (long)score];
+    scoreLabel.textColor = [UIColor whiteColor];
+    scoreLabel.textAlignment = NSTextAlignmentCenter;
+    scoreLabel.font = [UIFont systemFontOfSize:52.0 weight:UIFontWeightUltraLight];
+    [view addSubview:scoreLabel];
+    return view;
 }
 
 - (void)addPillowMetricToView:(UIView *)view frame:(CGRect)frame title:(NSString *)title value:(NSString *)value detail:(NSString *)detail color:(NSString *)color

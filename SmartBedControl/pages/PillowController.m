@@ -32,6 +32,13 @@
 @property (strong, nonatomic) UIView *manualPanelView;
 @property (assign, nonatomic) int recommendedSideHeight;
 @property (assign, nonatomic) int recommendedBackHeight;
+@property (strong, nonatomic) UIView *heightAdviceOverlay;
+@property (strong, nonatomic) UIView *heightAdviceSheet;
+@property (strong, nonatomic) NSArray<UIButton *> *manualPressureCards;
+@property (strong, nonatomic) NSArray<UILabel *> *manualPressureValueLabels;
+@property (strong, nonatomic) UISlider *manualPressureSlider;
+@property (strong, nonatomic) NSMutableArray<NSNumber *> *manualPressureValues;
+@property (assign, nonatomic) NSInteger selectedManualPressureIndex;
 @end
 
 @implementation PillowController
@@ -43,6 +50,8 @@
     _pose = @"01";
     _recommendedSideHeight = 9;
     _recommendedBackHeight = 7;
+    _selectedManualPressureIndex = 0;
+    _manualPressureValues = [@[@34, @31, @36, @28, @29] mutableCopy];
 
 
     UIColor *color = [UIColor colorWithValue:@"ffffff" alpha:0.1];
@@ -452,44 +461,139 @@
 
 - (void)showHeightAdvice
 {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"高度建议"
-                                                                   message:@"填写基础信息后生成侧睡/仰睡推荐高度。"
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    NSArray *placeholders = @[@"身高 (cm)，例如 170", @"体重 (kg)，例如 65", @"颈围 (cm)，标准约 35", @"肩宽 (cm)，例如 42", @"背型：较薄 / 较厚 / 微驼", @"床垫软硬：较软 / 适中 / 较硬"];
-    for (NSString *placeholder in placeholders) {
-        [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
-            textField.placeholder = placeholder;
-            textField.textColor = [UIColor whiteColor];
-        }];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"查看建议" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        NSInteger height = alert.textFields.firstObject.text.integerValue;
-        if (height <= 0) { height = 170; }
-        self.recommendedSideHeight = MIN(12, MAX(6, (int)round(height / 20.0 + 1)));
-        self.recommendedBackHeight = MIN(8, MAX(5, (int)round(height / 28.0)));
-        [self showHeightRecommendationSheet];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+    [self.heightAdviceOverlay removeFromSuperview];
+
+    UIView *overlay = [[UIView alloc] initWithFrame:self.view.bounds];
+    overlay.backgroundColor = [UIColor colorWithValue:@"#000000" alpha:0.62];
+    overlay.alpha = 0;
+    self.heightAdviceOverlay = overlay;
+    [self.view addSubview:overlay];
+
+    UIButton *dismiss = [UIButton buttonWithType:UIButtonTypeCustom];
+    dismiss.frame = overlay.bounds;
+    [dismiss addTarget:self action:@selector(dismissHeightAdviceSheet) forControlEvents:UIControlEventTouchUpInside];
+    [overlay addSubview:dismiss];
+
+    CGFloat sheetH = MIN(iPhoneHeight - STATUS_BAR_HEIGHT - 24, 690);
+    UIView *sheet = [[UIView alloc] initWithFrame:CGRectMake(0, iPhoneHeight, iPhoneWidth, sheetH)];
+    sheet.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    sheet.layer.cornerRadius = 24.0;
+    sheet.layer.masksToBounds = YES;
+    self.heightAdviceSheet = sheet;
+    [overlay addSubview:sheet];
+
+    UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, iPhoneWidth, sheetH)];
+    scroll.alwaysBounceVertical = YES;
+    [sheet addSubview:scroll];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(24, 22, iPhoneWidth - 80, 24)];
+    title.text = @"高度建议";
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightMedium];
+    [scroll addSubview:title];
+
+    UIButton *close = [UIButton buttonWithType:UIButtonTypeCustom];
+    close.frame = CGRectMake(iPhoneWidth - 52, 18, 36, 32);
+    [close setImage:[UIImage systemImageNamed:@"xmark"] forState:UIControlStateNormal];
+    close.tintColor = [UIColor colorWithValue:@"#6b7280"];
+    [close addTarget:self action:@selector(dismissHeightAdviceSheet) forControlEvents:UIControlEventTouchUpInside];
+    [scroll addSubview:close];
+
+    CGFloat y = 64;
+    CGFloat fieldW = (iPhoneWidth - 60) / 2.0;
+    [scroll addSubview:[self adviceInputWithFrame:CGRectMake(24, y, fieldW, 64) label:@"身高 (cm)" placeholder:@"170" tag:6100]];
+    [scroll addSubview:[self adviceInputWithFrame:CGRectMake(36 + fieldW, y, fieldW, 64) label:@"体重 (kg)" placeholder:@"65" tag:6101]];
+
+    y += 78;
+    [scroll addSubview:[self adviceSegmentWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 70) label:@"性别" options:@[@"男", @"女"] selectedIndex:0 tagBase:6200]];
+
+    y += 86;
+    [scroll addSubview:[self adviceInputWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 64) label:@"颈围  标准值约 35cm" placeholder:@"35" tag:6102]];
+
+    y += 78;
+    [scroll addSubview:[self adviceInputWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 64) label:@"肩宽" placeholder:@"42" tag:6103]];
+
+    y += 78;
+    [scroll addSubview:[self adviceSegmentWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 70) label:@"背型" options:@[@"较薄", @"较厚", @"微驼"] selectedIndex:0 tagBase:6300]];
+
+    y += 86;
+    [scroll addSubview:[self adviceSegmentWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 70) label:@"床垫软硬" options:@[@"较软", @"适中", @"较硬"] selectedIndex:1 tagBase:6400]];
+
+    y += 90;
+    UIButton *calc = [UIButton buttonWithType:UIButtonTypeCustom];
+    calc.frame = CGRectMake(24, y, iPhoneWidth - 48, 48);
+    calc.backgroundColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.10];
+    calc.layer.cornerRadius = 14.0;
+    calc.layer.borderWidth = 1.0;
+    calc.layer.borderColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.30].CGColor;
+    [calc setTitle:@"查看建议" forState:UIControlStateNormal];
+    [calc setTitleColor:[UIColor colorWithValue:@"#00d4ff"] forState:UIControlStateNormal];
+    calc.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    [calc addTarget:self action:@selector(calculateHeightRecommendation) forControlEvents:UIControlEventTouchUpInside];
+    [scroll addSubview:calc];
+
+    scroll.contentSize = CGSizeMake(0, CGRectGetMaxY(calc.frame) + 32);
+
+    [UIView animateWithDuration:0.25 animations:^{
+        overlay.alpha = 1;
+        sheet.frame = CGRectMake(0, iPhoneHeight - sheetH, iPhoneWidth, sheetH);
+    }];
 }
 
 - (void)showHeightRecommendationSheet
 {
-    NSString *message = [NSString stringWithFormat:@"推荐高度\n\n侧睡高度：%d cm\n仰睡高度：%d cm\n\n橙色推荐值采用后会同步更新页面上的实际高度滑条。", self.recommendedSideHeight, self.recommendedBackHeight];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"高度建议"
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    [alert addAction:[UIAlertAction actionWithTitle:@"采用推荐" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [self applyRecommendedHeightsWithMemory:NO];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"采用并记忆" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [self applyRecommendedHeightsWithMemory:YES];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"重新填写" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        [self showHeightAdvice];
-    }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    UIScrollView *scroll = (UIScrollView *)self.heightAdviceSheet.subviews.firstObject;
+    UIView *old = [scroll viewWithTag:6500];
+    [old removeFromSuperview];
+
+    CGFloat y = scroll.contentSize.height - 20;
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(24, y, iPhoneWidth - 48, 252)];
+    card.tag = 6500;
+    card.backgroundColor = [UIColor colorWithValue:@"#18181b"];
+    card.layer.cornerRadius = 16.0;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [scroll addSubview:card];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16, 14, card.bounds.size.width - 32, 18)];
+    title.text = @"推荐高度（橙色标记）";
+    title.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    title.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:title];
+
+    UILabel *desc = [[UILabel alloc] initWithFrame:CGRectMake(16, 36, card.bounds.size.width - 32, 16)];
+    desc.text = @"根据睡眠模型分析，适合您的枕头高度如下：";
+    desc.textColor = [UIColor colorWithValue:@"#6b7280"];
+    desc.font = [UIFont systemFontOfSize:10.0];
+    [card addSubview:desc];
+
+    [card addSubview:[self recommendationRowWithFrame:CGRectMake(16, 68, card.bounds.size.width - 32, 54) title:@"侧睡高度" current:self.sideLySlider.value recommended:self.recommendedSideHeight min:6 max:12]];
+    [card addSubview:[self recommendationRowWithFrame:CGRectMake(16, 132, card.bounds.size.width - 32, 54) title:@"仰睡高度" current:self.supineSlider.value recommended:self.recommendedBackHeight min:5 max:8]];
+
+    UIButton *apply = [UIButton buttonWithType:UIButtonTypeCustom];
+    apply.frame = CGRectMake(16, 202, (card.bounds.size.width - 40) / 2.0, 38);
+    apply.backgroundColor = [UIColor whiteColor];
+    apply.layer.cornerRadius = 12.0;
+    [apply setTitle:@"采用推荐" forState:UIControlStateNormal];
+    [apply setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    apply.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    [apply addTarget:self action:@selector(applyRecommendationOnly) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:apply];
+
+    UIButton *memory = [UIButton buttonWithType:UIButtonTypeCustom];
+    memory.frame = CGRectMake(CGRectGetMaxX(apply.frame) + 8, 202, (card.bounds.size.width - 40) / 2.0, 38);
+    memory.backgroundColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.10];
+    memory.layer.cornerRadius = 12.0;
+    memory.layer.borderWidth = 1.0;
+    memory.layer.borderColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.30].CGColor;
+    [memory setTitle:@"采用并记忆" forState:UIControlStateNormal];
+    [memory setTitleColor:[UIColor colorWithValue:@"#00d4ff"] forState:UIControlStateNormal];
+    memory.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    [memory addTarget:self action:@selector(applyRecommendationAndMemory) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:memory];
+
+    scroll.contentSize = CGSizeMake(0, CGRectGetMaxY(card.frame) + 30);
+    [scroll setContentOffset:CGPointMake(0, MAX(0, scroll.contentSize.height - scroll.bounds.size.height)) animated:YES];
 }
 
 - (void)applyRecommendedHeightsWithMemory:(BOOL)remember
@@ -509,6 +613,154 @@
     } else {
         [MJProgressHUD onlyShowMessage:@"已采用推荐高度" afterDelay:1.0 showAddTo:self.view];
     }
+}
+
+- (UIView *)adviceInputWithFrame:(CGRect)frame label:(NSString *)label placeholder:(NSString *)placeholder tag:(NSInteger)tag
+{
+    UIView *wrap = [[UIView alloc] initWithFrame:frame];
+    UILabel *labelView = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 18)];
+    labelView.text = label;
+    labelView.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    labelView.font = [UIFont systemFontOfSize:12.0];
+    [wrap addSubview:labelView];
+
+    UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(0, 24, frame.size.width, 40)];
+    field.tag = tag;
+    field.backgroundColor = [UIColor colorWithValue:@"#18181b"];
+    field.textColor = [UIColor whiteColor];
+    field.font = [UIFont systemFontOfSize:13.0];
+    field.layer.cornerRadius = 12.0;
+    field.layer.borderWidth = 1.0;
+    field.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    field.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 12, 1)];
+    field.leftViewMode = UITextFieldViewModeAlways;
+    field.attributedPlaceholder = [[NSAttributedString alloc] initWithString:placeholder attributes:@{NSForegroundColorAttributeName:[UIColor colorWithValue:@"#6b7280"]}];
+    field.keyboardType = UIKeyboardTypeDecimalPad;
+    [wrap addSubview:field];
+    return wrap;
+}
+
+- (UIView *)adviceSegmentWithFrame:(CGRect)frame label:(NSString *)label options:(NSArray<NSString *> *)options selectedIndex:(NSInteger)selectedIndex tagBase:(NSInteger)tagBase
+{
+    UIView *wrap = [[UIView alloc] initWithFrame:frame];
+    UILabel *labelView = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 18)];
+    labelView.text = label;
+    labelView.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    labelView.font = [UIFont systemFontOfSize:12.0];
+    [wrap addSubview:labelView];
+
+    CGFloat gap = 8.0;
+    CGFloat width = (frame.size.width - gap * (options.count - 1)) / options.count;
+    for (NSInteger i = 0; i < options.count; i++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        button.frame = CGRectMake(i * (width + gap), 26, width, 38);
+        button.tag = tagBase + i;
+        button.layer.cornerRadius = 12.0;
+        button.layer.borderWidth = 1.0;
+        BOOL selected = i == selectedIndex;
+        button.layer.borderColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#27272a") alpha:(selected ? 0.24 : 1.0)].CGColor;
+        button.backgroundColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#18181b") alpha:(selected ? 0.10 : 1.0)];
+        [button setTitle:options[i] forState:UIControlStateNormal];
+        [button setTitleColor:[UIColor colorWithValue:(selected ? @"#ffffff" : @"#9ca3af")] forState:UIControlStateNormal];
+        button.titleLabel.font = [UIFont systemFontOfSize:12.0];
+        [button addTarget:self action:@selector(heightAdviceOptionTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [wrap addSubview:button];
+    }
+    return wrap;
+}
+
+- (void)heightAdviceOptionTapped:(UIButton *)sender
+{
+    NSInteger group = sender.tag / 100;
+    for (UIView *subview in sender.superview.subviews) {
+        if (![subview isKindOfClass:[UIButton class]]) {
+            continue;
+        }
+        UIButton *button = (UIButton *)subview;
+        if (button.tag / 100 != group) {
+            continue;
+        }
+        BOOL selected = button == sender;
+        button.backgroundColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#18181b") alpha:(selected ? 0.10 : 1.0)];
+        button.layer.borderColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#27272a") alpha:(selected ? 0.24 : 1.0)].CGColor;
+        [button setTitleColor:[UIColor colorWithValue:(selected ? @"#ffffff" : @"#9ca3af")] forState:UIControlStateNormal];
+    }
+}
+
+- (void)calculateHeightRecommendation
+{
+    UITextField *heightField = (UITextField *)[self.heightAdviceSheet viewWithTag:6100];
+    NSInteger height = heightField.text.integerValue;
+    if (height <= 0) {
+        height = 170;
+    }
+    self.recommendedSideHeight = MIN(12, MAX(6, (int)round(height / 20.0 + 1)));
+    self.recommendedBackHeight = MIN(8, MAX(5, (int)round(height / 28.0)));
+    [self showHeightRecommendationSheet];
+}
+
+- (UIView *)recommendationRowWithFrame:(CGRect)frame title:(NSString *)title current:(int)current recommended:(int)recommended min:(int)min max:(int)max
+{
+    UIView *row = [[UIView alloc] initWithFrame:frame];
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, frame.size.width / 2.0, 18)];
+    titleLabel.text = title;
+    titleLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    titleLabel.font = [UIFont systemFontOfSize:12.0];
+    [row addSubview:titleLabel];
+
+    UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(frame.size.width / 2.0, 0, frame.size.width / 2.0, 18)];
+    value.text = [NSString stringWithFormat:@"%d cm  推荐 %d cm", current, recommended];
+    value.textColor = [UIColor whiteColor];
+    value.textAlignment = NSTextAlignmentRight;
+    value.font = [UIFont systemFontOfSize:11.0];
+    [row addSubview:value];
+
+    UIView *track = [[UIView alloc] initWithFrame:CGRectMake(0, 30, frame.size.width, 6)];
+    track.backgroundColor = [UIColor colorWithValue:@"#27272a"];
+    track.layer.cornerRadius = 3.0;
+    [row addSubview:track];
+
+    CGFloat currentPercent = (current - min) / (CGFloat)(max - min);
+    UIView *fill = [[UIView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width * MAX(0, MIN(1, currentPercent)), 6)];
+    fill.backgroundColor = [UIColor colorWithValue:@"#00d4ff"];
+    fill.layer.cornerRadius = 3.0;
+    [track addSubview:fill];
+
+    CGFloat recPercent = (recommended - min) / (CGFloat)(max - min);
+    UIView *marker = [[UIView alloc] initWithFrame:CGRectMake(frame.size.width * MAX(0, MIN(1, recPercent)) - 5, 26, 10, 14)];
+    marker.backgroundColor = [UIColor colorWithValue:@"#f97316"];
+    marker.layer.cornerRadius = 5.0;
+    [row addSubview:marker];
+    return row;
+}
+
+- (void)applyRecommendationOnly
+{
+    [self applyRecommendedHeightsWithMemory:NO];
+    [self dismissHeightAdviceSheet];
+}
+
+- (void)applyRecommendationAndMemory
+{
+    [self applyRecommendedHeightsWithMemory:YES];
+    [self dismissHeightAdviceSheet];
+}
+
+- (void)dismissHeightAdviceSheet
+{
+    if (!self.heightAdviceOverlay) {
+        return;
+    }
+    UIView *overlay = self.heightAdviceOverlay;
+    UIView *sheet = self.heightAdviceSheet;
+    [UIView animateWithDuration:0.22 animations:^{
+        overlay.alpha = 0;
+        sheet.frame = CGRectMake(0, iPhoneHeight, iPhoneWidth, sheet.frame.size.height);
+    } completion:^(BOOL finished) {
+        [overlay removeFromSuperview];
+        self.heightAdviceOverlay = nil;
+        self.heightAdviceSheet = nil;
+    }];
 }
 
 - (void)showMemoryModeFlow:(UIButton *)sender
@@ -592,54 +844,73 @@
     title.font = [UIFont systemFontOfSize:12.0];
     [self.manualPanelView addSubview:title];
 
-    NSArray *rows = @[
-        @[@"后枕分区", @34],
-        @[@"左边区", @31],
-        @[@"左中区", @36],
-        @[@"右中区", @28],
-        @[@"右边区", @29]
-    ];
-
+    NSArray *rows = @[@"后枕分区", @"左边区", @"左中区", @"右中区", @"右边区"];
+    NSMutableArray *cards = [NSMutableArray array];
+    NSMutableArray *valueLabels = [NSMutableArray array];
     CGFloat y = CGRectGetMaxY(title.frame) + 12;
     for (NSInteger i = 0; i < rows.count; i++) {
-        NSArray *row = rows[i];
-        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 38)];
+        UIButton *card = [UIButton buttonWithType:UIButtonTypeCustom];
+        card.frame = CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 38);
+        card.tag = 3300 + i;
         card.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
         card.layer.cornerRadius = 12.0;
         card.layer.borderWidth = 1.0;
         card.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.10].CGColor;
+        [card addTarget:self action:@selector(manualPressureCardTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.manualPanelView addSubview:card];
+        [cards addObject:card];
 
         UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 5, 90, 14)];
-        label.text = row[0];
+        label.text = rows[i];
         label.textColor = [UIColor colorWithValue:@"#9ca3af"];
         label.font = [UIFont systemFontOfSize:12.0];
         [card addSubview:label];
 
         UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(card.bounds.size.width - 58, 5, 42, 14)];
         value.tag = 3000 + i;
-        value.text = [NSString stringWithFormat:@"%@", row[1]];
+        value.text = [NSString stringWithFormat:@"%@", self.manualPressureValues[i]];
         value.textColor = [UIColor whiteColor];
         value.textAlignment = NSTextAlignmentRight;
         value.font = [UIFont systemFontOfSize:12.0];
         [card addSubview:value];
+        [valueLabels addObject:value];
 
-        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(12, 18, card.bounds.size.width - 24, 18)];
-        slider.minimumValue = 0;
-        slider.maximumValue = 60;
-        slider.value = [row[1] floatValue];
-        slider.minimumTrackTintColor = [self pillowPressureColor:slider.value];
-        slider.maximumTrackTintColor = [UIColor colorWithValue:@"#ffffff" alpha:0.08];
-        slider.thumbTintColor = [UIColor whiteColor];
-        slider.tag = 3100 + i;
-        [slider addTarget:self action:@selector(pressureSliderChanged:) forControlEvents:UIControlEventValueChanged];
-        [card addSubview:slider];
+        UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(12, 24, card.bounds.size.width - 24, 4)];
+        bar.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.08];
+        bar.layer.cornerRadius = 2.0;
+        [card addSubview:bar];
+
+        UIView *fill = [[UIView alloc] initWithFrame:CGRectMake(0, 0, bar.bounds.size.width * ([self.manualPressureValues[i] floatValue] / 60.0), 4)];
+        fill.tag = 3400 + i;
+        fill.backgroundColor = [self pillowPressureColor:[self.manualPressureValues[i] floatValue]];
+        fill.layer.cornerRadius = 2.0;
+        [bar addSubview:fill];
 
         y += 44.0;
     }
+    self.manualPressureCards = cards.copy;
+    self.manualPressureValueLabels = valueLabels.copy;
+
+    UILabel *sliderTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 8, self.manualPanelView.bounds.size.width - 40, 18)];
+    sliderTitle.text = @"调节当前选中区域";
+    sliderTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    sliderTitle.font = [UIFont systemFontOfSize:12.0];
+    [self.manualPanelView addSubview:sliderTitle];
+
+    self.manualPressureSlider = [[UISlider alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(sliderTitle.frame) + 8, self.manualPanelView.bounds.size.width - 48, 28)];
+    self.manualPressureSlider.minimumValue = 0;
+    self.manualPressureSlider.maximumValue = 60;
+    self.manualPressureSlider.value = [self.manualPressureValues[self.selectedManualPressureIndex] floatValue];
+    self.manualPressureSlider.minimumTrackTintColor = [self pillowPressureColor:self.manualPressureSlider.value];
+    self.manualPressureSlider.maximumTrackTintColor = [UIColor colorWithValue:@"#ffffff" alpha:0.08];
+    self.manualPressureSlider.thumbTintColor = [UIColor whiteColor];
+    [self.manualPressureSlider addTarget:self action:@selector(pressureSliderChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.manualPanelView addSubview:self.manualPressureSlider];
+    y = CGRectGetMaxY(self.manualPressureSlider.frame);
+    [self updateManualPressureSelectionUI];
 
     UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 2, self.manualPanelView.bounds.size.width - 40, 28)];
-    hint.text = @"低压为绿色，中段为蓝色，高压为红色；调整任一区域会立即下发到枕头。";
+    hint.text = @"先选择上方 5 个区域之一，再拖动下方进度条调节该区域压力。";
     hint.textColor = [UIColor colorWithValue:@"#4b5563"];
     hint.font = [UIFont systemFontOfSize:11.0];
     hint.numberOfLines = 0;
@@ -678,11 +949,15 @@
 
 - (void)pressureSliderChanged:(UISlider *)slider
 {
-    NSInteger index = slider.tag - 3100;
-    UILabel *valueLabel = (UILabel *)[self.manualPanelView viewWithTag:3000 + index];
+    NSInteger index = self.selectedManualPressureIndex;
+    if (index < 0 || index >= self.manualPressureValues.count) {
+        return;
+    }
+
     int value = (int)roundf(slider.value);
-    valueLabel.text = [NSString stringWithFormat:@"%d", value];
+    self.manualPressureValues[index] = @(value);
     slider.minimumTrackTintColor = [self pillowPressureColor:value];
+    [self updateManualPressureSelectionUI];
 
     if (index == 0) {
         NSData *data = [ControlCenter controlPillowArea:1 pressureValue:value];
@@ -692,6 +967,56 @@
 
     NSData *data = [ControlCenter controlPillowAirBag:(int)index pressureValue:value];
     [[BLEManager shareInstance] didSendMessageToDevice:data];
+}
+
+- (void)manualPressureCardTapped:(UIButton *)sender
+{
+    NSInteger index = sender.tag - 3300;
+    if (index < 0 || index >= self.manualPressureValues.count) {
+        return;
+    }
+
+    self.selectedManualPressureIndex = index;
+    self.manualPressureSlider.value = [self.manualPressureValues[index] floatValue];
+    self.manualPressureSlider.minimumTrackTintColor = [self pillowPressureColor:self.manualPressureSlider.value];
+    [self updateManualPressureSelectionUI];
+}
+
+- (void)updateManualPressureSelectionUI
+{
+    CGFloat maxValue = MAX(self.manualPressureSlider.maximumValue, 1.0);
+    for (NSInteger i = 0; i < self.manualPressureCards.count; i++) {
+        UIButton *card = self.manualPressureCards[i];
+        BOOL selected = i == self.selectedManualPressureIndex;
+        CGFloat pressure = [self.manualPressureValues[i] floatValue];
+
+        card.backgroundColor = [UIColor colorWithValue:(selected ? @"#00d4ff" : @"#ffffff") alpha:(selected ? 0.10 : 0.03)];
+        card.layer.borderColor = [UIColor colorWithValue:(selected ? @"#00d4ff" : @"#ffffff") alpha:(selected ? 0.45 : 0.10)].CGColor;
+
+        for (UIView *subview in card.subviews) {
+            if ([subview isKindOfClass:[UILabel class]]) {
+                UILabel *label = (UILabel *)subview;
+                if (label.tag == 3000 + i) {
+                    label.text = [NSString stringWithFormat:@"%d", (int)roundf(pressure)];
+                    label.textColor = [UIColor whiteColor];
+                    continue;
+                }
+                label.textColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#9ca3af")];
+            }
+
+            UIView *fill = [subview viewWithTag:3400 + i];
+            if (fill) {
+                CGRect frame = fill.frame;
+                frame.size.width = subview.bounds.size.width * MIN(MAX(pressure / maxValue, 0.0), 1.0);
+                fill.frame = frame;
+                fill.backgroundColor = [self pillowPressureColor:pressure];
+            }
+        }
+    }
+
+    CGFloat selectedValue = [self.manualPressureValues[self.selectedManualPressureIndex] floatValue];
+    self.manualPressureSlider.value = selectedValue;
+    self.manualPressureSlider.minimumTrackTintColor = [self pillowPressureColor:selectedValue];
 }
 
 /*
