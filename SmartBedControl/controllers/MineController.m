@@ -42,6 +42,13 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, strong) NSMutableArray<UIView *> *helpAnswerCards;
 @property (nonatomic, strong) UITextView *feedbackTextView;
 @property (nonatomic, strong) UITextField *feedbackContactField;
+@property (nonatomic, assign) BOOL snoreEnabled;
+@property (nonatomic, assign) NSInteger interventionLevel;
+@property (nonatomic, assign) NSInteger detectionSensitivity;
+@property (nonatomic, copy) NSString *snoreDndStart;
+@property (nonatomic, copy) NSString *snoreDndEnd;
+@property (nonatomic, copy) NSString *interventionStart;
+@property (nonatomic, copy) NSString *interventionEnd;
 - (instancetype)initWithType:(MJProfileDetailType)type title:(NSString *)title;
 @end
 
@@ -452,6 +459,13 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     self.dndEnabled = [defaults boolForKey:@"mattress_dnd_enabled"];
     self.dndStart = [defaults objectForKey:@"mattress_dnd_start"] ?: @"22:00";
     self.dndEnd = [defaults objectForKey:@"mattress_dnd_end"] ?: @"06:00";
+    self.snoreEnabled = [defaults boolForKey:@"pillow_snore_enabled"];
+    self.interventionLevel = [defaults objectForKey:@"pillow_intervention_level"] ? [defaults integerForKey:@"pillow_intervention_level"] : 3;
+    self.detectionSensitivity = [defaults objectForKey:@"pillow_detection_sensitivity"] ? [defaults integerForKey:@"pillow_detection_sensitivity"] : 3;
+    self.snoreDndStart = [defaults objectForKey:@"pillow_snore_dnd_start"] ?: @"22:00";
+    self.snoreDndEnd = [defaults objectForKey:@"pillow_snore_dnd_end"] ?: @"06:00";
+    self.interventionStart = [defaults objectForKey:@"pillow_intervention_start"] ?: @"23:00";
+    self.interventionEnd = [defaults objectForKey:@"pillow_intervention_end"] ?: @"06:00";
     self.alarmEnabled = [defaults objectForKey:@"body_alarm_enabled"] ? [defaults boolForKey:@"body_alarm_enabled"] : YES;
     self.alarmTime = [defaults objectForKey:@"body_alarm_time"] ?: @"07:30";
     NSArray *savedRepeatDays = [defaults objectForKey:@"body_alarm_repeat_days"];
@@ -549,6 +563,10 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     }
     if (self.type == MJProfileDetailTypeAlarm) {
         [self buildAlarmUIInScrollView:scrollView];
+        return;
+    }
+    if (self.type == MJProfileDetailTypePillowSnore) {
+        [self buildPillowSnoreUIInScrollView:scrollView];
         return;
     }
     if (self.type == MJProfileDetailTypeHelp) {
@@ -690,6 +708,100 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     note.numberOfLines = 0;
     [scrollView addSubview:note];
     scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
+- (void)buildPillowSnoreUIInScrollView:(UIScrollView *)scrollView
+{
+    CGFloat y = 0;
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 386)];
+    card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    card.layer.cornerRadius = 18.0;
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = 1.0;
+    card.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+    [scrollView addSubview:card];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(18, 16, card.bounds.size.width - 100, 22)];
+    title.text = @"启用鼾声干预";
+    title.textColor = [UIColor whiteColor];
+    title.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    [card addSubview:title];
+
+    UISwitch *snoreSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(card.bounds.size.width - 70, 12, 52, 32)];
+    snoreSwitch.on = self.snoreEnabled;
+    [snoreSwitch addTarget:self action:@selector(snoreSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+    [card addSubview:snoreSwitch];
+
+    UILabel *desc = [[UILabel alloc] initWithFrame:CGRectMake(18, 42, card.bounds.size.width - 36, 18)];
+    desc.text = @"开启后，智能枕会根据鼾声强度进行柔性高度干预。";
+    desc.textColor = [UIColor colorWithValue:@"#6b7280"];
+    desc.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:desc];
+
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(18, 72, card.bounds.size.width - 36, 0.5)];
+    line.backgroundColor = [UIColor colorWithValue:@"#27272a"];
+    [card addSubview:line];
+
+    [self addSnoreLevelSectionToCard:card y:88 title:@"干预强度" selected:self.interventionLevel tagBase:9100];
+    [self addSnoreLevelSectionToCard:card y:160 title:@"检测灵敏度" selected:self.detectionSensitivity tagBase:9200];
+
+    UILabel *dndLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 238, card.bounds.size.width - 36, 18)];
+    dndLabel.text = @"免打扰时段";
+    dndLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    dndLabel.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:dndLabel];
+
+    UIButton *dndStart = [self timeButtonWithFrame:CGRectMake(18, 262, (card.bounds.size.width - 48) / 2.0, 42) title:self.snoreDndStart tag:811];
+    [card addSubview:dndStart];
+    UIButton *dndEnd = [self timeButtonWithFrame:CGRectMake(CGRectGetMaxX(dndStart.frame) + 12, 262, (card.bounds.size.width - 48) / 2.0, 42) title:self.snoreDndEnd tag:812];
+    [card addSubview:dndEnd];
+
+    UILabel *windowLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 318, card.bounds.size.width - 36, 18)];
+    windowLabel.text = @"干预时间";
+    windowLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    windowLabel.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:windowLabel];
+
+    UIButton *interventionStart = [self timeButtonWithFrame:CGRectMake(18, 342, (card.bounds.size.width - 48) / 2.0, 42) title:self.interventionStart tag:821];
+    [card addSubview:interventionStart];
+    UIButton *interventionEnd = [self timeButtonWithFrame:CGRectMake(CGRectGetMaxX(interventionStart.frame) + 12, 342, (card.bounds.size.width - 48) / 2.0, 42) title:self.interventionEnd tag:822];
+    [card addSubview:interventionEnd];
+
+    UILabel *note = [[UILabel alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(card.frame) + 18, iPhoneWidth - 48, 96)];
+    note.text = @"鼾声干预仅属于智能枕流程。强度、灵敏度、免打扰和干预时间均可点击修改，并会保存到本机设置。";
+    note.textColor = [UIColor colorWithValue:@"#6b7280"];
+    note.font = [UIFont systemFontOfSize:13.0];
+    note.numberOfLines = 0;
+    [scrollView addSubview:note];
+    scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
+}
+
+- (void)addSnoreLevelSectionToCard:(UIView *)card y:(CGFloat)y title:(NSString *)title selected:(NSInteger)selected tagBase:(NSInteger)tagBase
+{
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(18, y, card.bounds.size.width - 36, 18)];
+    label.text = title;
+    label.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    label.font = [UIFont systemFontOfSize:12.0];
+    [card addSubview:label];
+
+    NSArray *levels = @[@"很低", @"较低", @"中等", @"较高", @"很高"];
+    CGFloat gap = 6.0;
+    CGFloat w = (card.bounds.size.width - 36 - gap * 4) / 5.0;
+    for (NSInteger i = 0; i < levels.count; i++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        button.frame = CGRectMake(18 + i * (w + gap), y + 28, w, 34);
+        button.tag = tagBase + i + 1;
+        BOOL isSelected = selected == i + 1;
+        button.backgroundColor = [UIColor colorWithValue:(isSelected ? @"#ffffff" : @"#1a1a1a") alpha:(isSelected ? 0.12 : 1.0)];
+        button.layer.cornerRadius = 10.0;
+        button.layer.borderWidth = 1.0;
+        button.layer.borderColor = [UIColor colorWithValue:(isSelected ? @"#ffffff" : @"#27272a") alpha:(isSelected ? 0.24 : 1.0)].CGColor;
+        [button setTitle:levels[i] forState:UIControlStateNormal];
+        [button setTitleColor:[UIColor colorWithValue:(isSelected ? @"#ffffff" : @"#6b7280")] forState:UIControlStateNormal];
+        button.titleLabel.font = [UIFont systemFontOfSize:11.0];
+        [button addTarget:self action:@selector(snoreLevelTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [card addSubview:button];
+    }
 }
 
 - (void)buildAlarmUIInScrollView:(UIScrollView *)scrollView
@@ -1111,8 +1223,68 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
         [self showAlarmTimePicker:sender];
         return;
     }
+    if (sender.tag >= 811 && sender.tag <= 822) {
+        [self showSnoreTimePickerForButton:sender];
+        return;
+    }
     BOOL editingStart = sender.tag == 801;
     [self showTimePickerForStart:editingStart sender:sender];
+}
+
+- (void)snoreSwitchChanged:(UISwitch *)sender
+{
+    self.snoreEnabled = sender.on;
+    [[NSUserDefaults standardUserDefaults] setBool:self.snoreEnabled forKey:@"pillow_snore_enabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)snoreLevelTapped:(UIButton *)sender
+{
+    BOOL isIntervention = sender.tag >= 9100 && sender.tag < 9200;
+    NSInteger selected = isIntervention ? sender.tag - 9100 : sender.tag - 9200;
+    if (isIntervention) {
+        self.interventionLevel = selected;
+        [[NSUserDefaults standardUserDefaults] setInteger:selected forKey:@"pillow_intervention_level"];
+    } else {
+        self.detectionSensitivity = selected;
+        [[NSUserDefaults standardUserDefaults] setInteger:selected forKey:@"pillow_detection_sensitivity"];
+    }
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self.view.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self buildUI];
+}
+
+- (void)showSnoreTimePickerForButton:(UIButton *)sender
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"时间设置"
+                                                                   message:@"\n\n\n\n\n\n\n\n"
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    UIDatePicker *picker = [[UIDatePicker alloc] initWithFrame:CGRectMake(12, 42, alert.view.bounds.size.width - 24, 180)];
+    picker.datePickerMode = UIDatePickerModeTime;
+    if (@available(iOS 13.4, *)) {
+        picker.preferredDatePickerStyle = UIDatePickerStyleWheels;
+    }
+    picker.locale = [NSLocale localeWithLocaleIdentifier:@"zh_CN"];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"HH:mm";
+    NSDate *date = [formatter dateFromString:sender.currentTitle];
+    if (date) {
+        picker.date = date;
+    }
+    [alert.view addSubview:picker];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSString *time = [formatter stringFromDate:picker.date];
+        NSString *key = @"";
+        if (sender.tag == 811) { self.snoreDndStart = time; key = @"pillow_snore_dnd_start"; }
+        if (sender.tag == 812) { self.snoreDndEnd = time; key = @"pillow_snore_dnd_end"; }
+        if (sender.tag == 821) { self.interventionStart = time; key = @"pillow_intervention_start"; }
+        if (sender.tag == 822) { self.interventionEnd = time; key = @"pillow_intervention_end"; }
+        [[NSUserDefaults standardUserDefaults] setObject:time forKey:key];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [sender setTitle:time forState:UIControlStateNormal];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)showAlarmTimePicker:(UIButton *)sender

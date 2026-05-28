@@ -527,7 +527,38 @@
         [self addPillowMetricToView:postureCard frame:CGRectMake(x, 66, w, 46) title:item[0] value:item[1] detail:item[2] color:item[3]];
     }
 
-    CGFloat snoreY = CGRectGetMaxY(postureCard.frame) + 18;
+    CGFloat summaryY = CGRectGetMaxY(postureCard.frame) + 14;
+    NSArray *summaryMetrics = @[
+        @[@"体位转动次数", @"14"],
+        @[@"深睡时长占比", @"22%"],
+        @[@"仰睡占比", @"30%"],
+        @[@"侧睡占比", @"58%"]
+    ];
+    CGFloat smallCardW = (iPhoneWidth - 50) / 2.0;
+    for (NSInteger i = 0; i < summaryMetrics.count; i++) {
+        NSArray *metric = summaryMetrics[i];
+        UIView *smallCard = [[UIView alloc] initWithFrame:CGRectMake(20 + (i % 2) * (smallCardW + 10), summaryY + (i / 2) * 58, smallCardW, 48)];
+        smallCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+        smallCard.layer.cornerRadius = 12.0;
+        smallCard.layer.borderWidth = 1.0;
+        smallCard.layer.borderColor = [UIColor colorWithValue:@"#27272a"].CGColor;
+        [_scrollView addSubview:smallCard];
+
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 8, smallCardW - 58, 14)];
+        label.text = metric[0];
+        label.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        label.font = [UIFont systemFontOfSize:11.0];
+        [smallCard addSubview:label];
+
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(smallCardW - 50, 8, 38, 16)];
+        value.text = metric[1];
+        value.textAlignment = NSTextAlignmentRight;
+        value.textColor = [UIColor whiteColor];
+        value.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+        [smallCard addSubview:value];
+    }
+
+    CGFloat snoreY = summaryY + 126;
     UILabel *snoreTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, snoreY, 160, 16)];
     snoreTitle.text = @"鼾声分析";
     snoreTitle.textColor = [UIColor colorWithValue:@"#6b7280"];

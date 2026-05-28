@@ -7,6 +7,7 @@
 
 #import "UserMessageController.h"
 #import "../Views/PillowSlider.h"
+#import "../Tools/DataCenter.h"
 
 #define secondTextColor [UIColor colorWithValue:@"#6b7280"]
 #define labelBGColor [UIColor colorWithValue:@"#1a1a1a"]
@@ -188,8 +189,8 @@
     [okBtn addTarget:self action:@selector(saveUserMessage) forControlEvents:UIControlEventTouchUpInside];
     [_messageScrollView addSubview:okBtn];
     
-    BLEManager *manager = [BLEManager shareInstance];
-    if (manager.mode == PillowNormal) {
+    BedMode currentMode = [DataCenter shareInstance].connectedBed ? [DataCenter shareInstance].connectedBed.mode : [BLEManager shareInstance].mode;
+    if (currentMode == PillowNormal) {
         
         _messageScrollView.contentSize = CGSizeMake(iPhoneWidth, iPhoneHeight + 260);
         
@@ -198,8 +199,17 @@
         
         okBtn.frame = CGRectMake(20, CGRectGetMaxY(pillowAdviceView.frame) + 20, iPhoneWidth - 40, 56);
     }else{
+        CGFloat pillowOnlyStartY = CGRectGetMinY(neckLabel.frame) - 1;
+        for (UIView *subview in [_messageScrollView.subviews copy]) {
+            if (subview == okBtn) {
+                continue;
+            }
+            if (CGRectGetMinY(subview.frame) >= pillowOnlyStartY) {
+                [subview removeFromSuperview];
+            }
+        }
         _messageScrollView.contentSize = CGSizeMake(iPhoneWidth, iPhoneHeight);
-        okBtn.frame = CGRectMake(20, CGRectGetMaxY(adviceBtn.frame) + 20, iPhoneWidth - 40, 56);
+        okBtn.frame = CGRectMake(20, CGRectGetMaxY(sleepLabel.frame) + 65, iPhoneWidth - 40, 56);
     }
 
     [self loadSavedUserMessage];

@@ -30,6 +30,8 @@
 @property (strong, nonatomic) UIButton *manualModeBtn;
 @property (strong, nonatomic) UIView *autoPanelView;
 @property (strong, nonatomic) UIView *manualPanelView;
+@property (assign, nonatomic) int recommendedSideHeight;
+@property (assign, nonatomic) int recommendedBackHeight;
 @end
 
 @implementation PillowController
@@ -39,6 +41,8 @@
     self.view.backgroundColor = mainColor;
     _index = 1;
     _pose = @"01";
+    _recommendedSideHeight = 9;
+    _recommendedBackHeight = 7;
 
 
     UIColor *color = [UIColor colorWithValue:@"ffffff" alpha:0.1];
@@ -449,14 +453,62 @@
 - (void)showHeightAdvice
 {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"高度建议"
-                                                                   message:@"根据网页原型，此处用于录入身高、体重、颈围、肩宽、背型和床垫软硬，计算侧睡/仰睡推荐高度。"
+                                                                   message:@"填写基础信息后生成侧睡/仰睡推荐高度。"
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"采用推荐 侧睡 9cm / 仰睡 6.5cm" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        self.sideLySlider.title = @"侧睡高度 · 推荐 9cm";
-        self.supineSlider.title = @"仰睡高度 · 推荐 6.5cm";
+    NSArray *placeholders = @[@"身高 (cm)，例如 170", @"体重 (kg)，例如 65", @"颈围 (cm)，标准约 35", @"肩宽 (cm)，例如 42", @"背型：较薄 / 较厚 / 微驼", @"床垫软硬：较软 / 适中 / 较硬"];
+    for (NSString *placeholder in placeholders) {
+        [alert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+            textField.placeholder = placeholder;
+            textField.textColor = [UIColor whiteColor];
+        }];
+    }
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"查看建议" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        NSInteger height = alert.textFields.firstObject.text.integerValue;
+        if (height <= 0) { height = 170; }
+        self.recommendedSideHeight = MIN(12, MAX(6, (int)round(height / 20.0 + 1)));
+        self.recommendedBackHeight = MIN(8, MAX(5, (int)round(height / 28.0)));
+        [self showHeightRecommendationSheet];
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)showHeightRecommendationSheet
+{
+    NSString *message = [NSString stringWithFormat:@"推荐高度\n\n侧睡高度：%d cm\n仰睡高度：%d cm\n\n橙色推荐值采用后会同步更新页面上的实际高度滑条。", self.recommendedSideHeight, self.recommendedBackHeight];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"高度建议"
+                                                                   message:message
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    [alert addAction:[UIAlertAction actionWithTitle:@"采用推荐" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self applyRecommendedHeightsWithMemory:NO];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"采用并记忆" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self applyRecommendedHeightsWithMemory:YES];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"重新填写" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self showHeightAdvice];
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)applyRecommendedHeightsWithMemory:(BOOL)remember
+{
+    self.sideLySlider.title = [NSString stringWithFormat:@"侧睡高度 · 推荐 %dcm", self.recommendedSideHeight];
+    self.supineSlider.title = [NSString stringWithFormat:@"仰睡高度 · 推荐 %dcm", self.recommendedBackHeight];
+    self.sideLySlider.value = self.recommendedSideHeight;
+    self.supineSlider.value = self.recommendedBackHeight;
+
+    if (remember) {
+        NSString *mode = [NSString stringWithFormat:@"推荐模式 %d/%dcm", self.recommendedSideHeight, self.recommendedBackHeight];
+        NSMutableArray *modes = [NSMutableArray arrayWithArray:[[NSUserDefaults standardUserDefaults] objectForKey:@"pillow_memory_modes"] ?: @[]];
+        [modes addObject:mode];
+        [[NSUserDefaults standardUserDefaults] setObject:modes.copy forKey:@"pillow_memory_modes"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [MJProgressHUD onlyShowMessage:@"已采用推荐并加入记忆" afterDelay:1.0 showAddTo:self.view];
+    } else {
+        [MJProgressHUD onlyShowMessage:@"已采用推荐高度" afterDelay:1.0 showAddTo:self.view];
+    }
 }
 
 - (void)showMemoryModeFlow:(UIButton *)sender

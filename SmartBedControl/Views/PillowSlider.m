@@ -86,6 +86,7 @@
 - (void)setValue:(int)value
 {
     self.slider.value = value;
+    self.valueLabel.text = [NSString stringWithFormat:@"%dcm", value];
 }
 
 - (void)setTitle:(NSString *)title
