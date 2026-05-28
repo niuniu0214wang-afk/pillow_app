@@ -56,18 +56,16 @@
     _valueLabel.text = @"0";
     [self addSubview:_valueLabel];
 
-    UIImage *maxImage = [UIImage imageNamed:@"sliderMax"];
-    UIImage *minImage = [UIImage imageNamed:@"sliderMin"];
-
     // 滑块：左边距 SCALE(35)，右边距 SCALE(55)，两端留出标签空间
     self.slider = [[UISlider alloc] initWithFrame:CGRectMake(SCALE(35), CGRectGetMaxY(self.partLabel.frame) + 8, viewW - SCALE(90), 16)];
     [self.slider setMaximumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#ffffff" alpha:0.06]] forState:UIControlStateNormal];
-    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#ef4444"]] forState:UIControlStateNormal];
+    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#00d4ff"]] forState:UIControlStateNormal];
     [self.slider setThumbImage:[UIImage imageNamed:@"sliderPoint"] forState:UIControlStateNormal];
     [self.slider addTarget:self action:@selector(levelChanged:) forControlEvents:UIControlEventValueChanged];
     [self.slider addTarget:self action:@selector(levelChangeEnd:) forControlEvents:UIControlEventTouchUpInside];
     self.slider.minimumValue = 0;
     self.slider.maximumValue = 100;
+    self.value = 50;
     [self addSubview:self.slider];
 }
 
@@ -106,6 +104,7 @@
 
 - (void)setValue:(int)value
 {
+    value = MAX(0, MIN(100, value));
     _value = value;
     self.slider.value = value;
     _valueLabel.text = [NSString stringWithFormat:@"%d", value];

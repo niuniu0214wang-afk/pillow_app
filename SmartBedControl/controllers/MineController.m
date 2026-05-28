@@ -33,6 +33,9 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 @property (nonatomic, copy) NSString *dndEnd;
 @property (nonatomic, assign) BOOL alarmEnabled;
 @property (nonatomic, copy) NSString *alarmTime;
+@property (nonatomic, strong) UIScrollView *contentScrollView;
+@property (nonatomic, strong) NSMutableArray<UILabel *> *helpAnswerLabels;
+@property (nonatomic, strong) NSMutableArray<UIView *> *helpAnswerCards;
 - (instancetype)initWithType:(MJProfileDetailType)type title:(NSString *)title;
 @end
 
@@ -508,6 +511,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 
     UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, STATUS_BAR_HEIGHT + 48, iPhoneWidth, iPhoneHeight - STATUS_BAR_HEIGHT - 48)];
     scrollView.alwaysBounceVertical = YES;
+    self.contentScrollView = scrollView;
     [self.view addSubview:scrollView];
 
     if (self.type == MJProfileDetailTypeMattressAuto) {
@@ -516,6 +520,10 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     }
     if (self.type == MJProfileDetailTypeAlarm) {
         [self buildAlarmUIInScrollView:scrollView];
+        return;
+    }
+    if (self.type == MJProfileDetailTypeHelp) {
+        [self buildHelpUIInScrollView:scrollView];
         return;
     }
 
@@ -689,6 +697,143 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(note.frame) + 30);
 }
 
+- (void)buildHelpUIInScrollView:(UIScrollView *)scrollView
+{
+    self.helpAnswerLabels = [NSMutableArray array];
+    self.helpAnswerCards = [NSMutableArray array];
+
+    CGFloat y = 0;
+    UIView *scanCard = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 210)];
+    scanCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    scanCard.layer.cornerRadius = 18.0;
+    scanCard.layer.masksToBounds = YES;
+    scanCard.layer.borderWidth = 1.0;
+    scanCard.layer.borderColor = [UIColor colorWithValue:@"#18181b"].CGColor;
+    [scrollView addSubview:scanCard];
+
+    UIView *pulseOuter = [[UIView alloc] initWithFrame:CGRectMake((scanCard.bounds.size.width - 112) / 2.0, 28, 112, 112)];
+    pulseOuter.layer.cornerRadius = 56.0;
+    pulseOuter.layer.borderWidth = 1.0;
+    pulseOuter.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.10].CGColor;
+    [scanCard addSubview:pulseOuter];
+
+    UIView *pulseInner = [[UIView alloc] initWithFrame:CGRectMake(28, 28, 56, 56)];
+    pulseInner.backgroundColor = [UIColor colorWithValue:@"#1a1a1a"];
+    pulseInner.layer.cornerRadius = 28.0;
+    pulseInner.layer.masksToBounds = YES;
+    [pulseOuter addSubview:pulseInner];
+
+    UIImageView *btIcon = [[UIImageView alloc] initWithFrame:CGRectMake(14, 14, 28, 28)];
+    btIcon.image = [UIImage systemImageNamed:@"dot.radiowaves.left.and.right"];
+    btIcon.tintColor = [UIColor colorWithValue:@"#00d4ff"];
+    [pulseInner addSubview:btIcon];
+
+    UILabel *scanTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, 152, scanCard.bounds.size.width - 40, 20)];
+    scanTitle.text = @"正在自动搜索附近设备...";
+    scanTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    scanTitle.textAlignment = NSTextAlignmentCenter;
+    scanTitle.font = [UIFont systemFontOfSize:14.0];
+    [scanCard addSubview:scanTitle];
+
+    UILabel *scanSub = [[UILabel alloc] initWithFrame:CGRectMake(20, 176, scanCard.bounds.size.width - 40, 18)];
+    scanSub.text = @"请确保设备已通电并处于配对模式";
+    scanSub.textColor = [UIColor colorWithValue:@"#4b5563"];
+    scanSub.textAlignment = NSTextAlignmentCenter;
+    scanSub.font = [UIFont systemFontOfSize:12.0];
+    [scanCard addSubview:scanSub];
+
+    y = CGRectGetMaxY(scanCard.frame) + 26;
+    UILabel *faqTitle = [self detailSectionLabel:@"常见问题" y:y];
+    [scrollView addSubview:faqTitle];
+    y = CGRectGetMaxY(faqTitle.frame) + 12;
+
+    NSArray *faqs = @[
+        @{
+            @"q":@"搜索不到需要连接的设备怎么办？",
+            @"a":@"1. 确认设备已通电并处于配对模式。\n2. 将手机与设备距离保持在 1 米以内。\n3. 检查手机蓝牙 / Wi-Fi 是否已开启。\n4. 尝试重启设备后再次搜索。\n5. 确认该设备尚未被其他手机绑定。"
+        },
+        @{
+            @"q":@"绑定时提示绑定失败怎么办？",
+            @"a":@"1. 绑定超时：靠近设备后重新尝试。\n2. 设备固件版本过低：请先升级固件再绑定。\n3. Wi-Fi 配网不稳定：请确认路由器为 2.4GHz 频段。\n4. 长按设备复位键 5 秒后重试。"
+        }
+    ];
+
+    for (NSInteger i = 0; i < faqs.count; i++) {
+        NSDictionary *faq = faqs[i];
+        UIView *card = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 58)];
+        card.backgroundColor = [UIColor colorWithValue:@"#111111"];
+        card.layer.cornerRadius = 16.0;
+        card.layer.masksToBounds = YES;
+        card.layer.borderWidth = 1.0;
+        card.layer.borderColor = [UIColor colorWithValue:@"#18181b"].CGColor;
+        [scrollView addSubview:card];
+        [self.helpAnswerCards addObject:card];
+
+        UIButton *question = [UIButton buttonWithType:UIButtonTypeCustom];
+        question.frame = CGRectMake(0, 0, card.bounds.size.width, 58);
+        question.tag = 900 + i;
+        [question addTarget:self action:@selector(helpFaqTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [card addSubview:question];
+
+        UILabel *qLabel = [[UILabel alloc] initWithFrame:CGRectMake(18, 0, card.bounds.size.width - 58, 58)];
+        qLabel.text = faq[@"q"];
+        qLabel.textColor = [UIColor whiteColor];
+        qLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+        qLabel.numberOfLines = 2;
+        [card addSubview:qLabel];
+
+        UIImageView *chevron = [[UIImageView alloc] initWithFrame:CGRectMake(card.bounds.size.width - 34, 21, 16, 16)];
+        chevron.image = [UIImage systemImageNamed:@"chevron.down"];
+        chevron.tintColor = [UIColor colorWithValue:@"#6b7280"];
+        [card addSubview:chevron];
+
+        UILabel *answer = [[UILabel alloc] initWithFrame:CGRectMake(18, 70, card.bounds.size.width - 36, 128)];
+        answer.text = faq[@"a"];
+        answer.textColor = [UIColor colorWithValue:@"#9ca3af"];
+        answer.font = [UIFont systemFontOfSize:12.0];
+        answer.numberOfLines = 0;
+        answer.hidden = YES;
+        [card addSubview:answer];
+        [self.helpAnswerLabels addObject:answer];
+
+        y = CGRectGetMaxY(card.frame) + 12;
+    }
+
+    y += 14;
+    UIView *contactCard = [[UIView alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 156)];
+    contactCard.backgroundColor = [UIColor colorWithValue:@"#111111"];
+    contactCard.layer.cornerRadius = 18.0;
+    contactCard.layer.masksToBounds = YES;
+    contactCard.layer.borderWidth = 1.0;
+    contactCard.layer.borderColor = [UIColor colorWithValue:@"#18181b"].CGColor;
+    [scrollView addSubview:contactCard];
+
+    UILabel *contactIntro = [[UILabel alloc] initWithFrame:CGRectMake(18, 16, contactCard.bounds.size.width - 36, 34)];
+    contactIntro.text = @"如有更多问题，欢迎通过以下方式联系我们";
+    contactIntro.textColor = [UIColor colorWithValue:@"#6b7280"];
+    contactIntro.font = [UIFont systemFontOfSize:12.0];
+    [contactCard addSubview:contactIntro];
+
+    UILabel *phone = [[UILabel alloc] initWithFrame:CGRectMake(18, 62, contactCard.bounds.size.width - 36, 28)];
+    phone.text = @"客服热线  400-XXX-XXXX";
+    phone.textColor = [UIColor whiteColor];
+    phone.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    [contactCard addSubview:phone];
+
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(18, 102, contactCard.bounds.size.width - 36, 0.5)];
+    line.backgroundColor = [UIColor colorWithValue:@"#27272a"];
+    [contactCard addSubview:line];
+
+    UILabel *ticket = [[UILabel alloc] initWithFrame:CGRectMake(18, 114, contactCard.bounds.size.width - 36, 30)];
+    ticket.text = @"或在 APP 中点击 我的 -> 帮助与客服，提交在线工单";
+    ticket.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    ticket.font = [UIFont systemFontOfSize:12.0];
+    ticket.numberOfLines = 2;
+    [contactCard addSubview:ticket];
+
+    scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(contactCard.frame) + 32);
+}
+
 - (UILabel *)detailSectionLabel:(NSString *)text y:(CGFloat)y
 {
     UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(20, y, iPhoneWidth - 40, 18)];
@@ -780,6 +925,41 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     self.alarmEnabled = sender.on;
     [[NSUserDefaults standardUserDefaults] setBool:self.alarmEnabled forKey:@"body_alarm_enabled"];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)helpFaqTapped:(UIButton *)sender
+{
+    NSInteger index = sender.tag - 900;
+    if (index < 0 || index >= self.helpAnswerLabels.count) {
+        return;
+    }
+
+    UILabel *answer = self.helpAnswerLabels[index];
+    UIView *card = self.helpAnswerCards[index];
+    BOOL willOpen = answer.hidden;
+    answer.hidden = !willOpen;
+
+    CGFloat delta = willOpen ? 140 : -140;
+    CGRect cardFrame = card.frame;
+    cardFrame.size.height += delta;
+
+    [UIView animateWithDuration:0.22 animations:^{
+        card.frame = cardFrame;
+        for (NSInteger i = index + 1; i < self.helpAnswerCards.count; i++) {
+            UIView *nextCard = self.helpAnswerCards[i];
+            CGRect frame = nextCard.frame;
+            frame.origin.y += delta;
+            nextCard.frame = frame;
+        }
+        for (UIView *subview in self.contentScrollView.subviews) {
+            if (subview.frame.origin.y > CGRectGetMaxY(card.frame) - delta && ![self.helpAnswerCards containsObject:subview]) {
+                CGRect frame = subview.frame;
+                frame.origin.y += delta;
+                subview.frame = frame;
+            }
+        }
+        self.contentScrollView.contentSize = CGSizeMake(0, self.contentScrollView.contentSize.height + delta);
+    }];
 }
 
 - (void)timeButtonPressed:(UIButton *)sender
