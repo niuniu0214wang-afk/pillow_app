@@ -80,15 +80,15 @@
     self.slider.frame = CGRectMake(SCALE(35), CGRectGetMaxY(self.partLabel.frame) + 8, viewW - SCALE(90), 16);
 }
 
-// 根据数值返回对应颜色：0-33 红，34-66 蓝，67-100 绿
+// 根据视觉硬度返回对应颜色：低值偏软为绿，中间为蓝，高值偏硬为红
 - (UIColor *)colorForValue:(int)v
 {
     if (v <= 33) {
-        return [UIColor colorWithValue:@"#ef4444"];
+        return [UIColor colorWithValue:@"#00FF87"];
     } else if (v <= 66) {
         return [UIColor colorWithValue:@"#00d4ff"];
     } else {
-        return [UIColor colorWithValue:@"#00FF87"];
+        return [UIColor colorWithValue:@"#ef4444"];
     }
 }
 

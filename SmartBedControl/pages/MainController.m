@@ -1310,7 +1310,7 @@
         
         level = 1;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 85;
+            slider.value = 0;
         }
     }
     
@@ -1330,7 +1330,7 @@
 //        }];
         level = 3;
         for (RegulateSlider *slider in _sliderArr) {
-            slider.value = 0;
+            slider.value = 100;
         }
     }
     
