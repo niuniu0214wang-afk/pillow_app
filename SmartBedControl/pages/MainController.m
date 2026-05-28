@@ -610,6 +610,7 @@
     _hardBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     _hardBtn.backgroundColor = [UIColor colorWithValue:@"#ef4444" alpha:0.08];
     _hardBtn.frame = CGRectMake(quickPad, 16, quickBtnW, 36);
+    _hardBtn.tag = 3001;
     [_hardBtn setTitle:@"一键变硬" forState:UIControlStateNormal];
     _hardBtn.titleLabel.font = [UIFont systemFontOfSize:SCALE(12.0)];
     _hardBtn.layer.cornerRadius = 18.0;
@@ -623,6 +624,7 @@
     _mediumBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     _mediumBtn.backgroundColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.08];
     _mediumBtn.frame = CGRectMake(CGRectGetMaxX(_hardBtn.frame) + quickGap, 16, quickBtnW, 36);
+    _mediumBtn.tag = 3002;
     _mediumBtn.titleLabel.font = [UIFont systemFontOfSize:SCALE(12.0)];
     _mediumBtn.layer.cornerRadius = 18.0;
     _mediumBtn.layer.masksToBounds = YES;
@@ -636,6 +638,7 @@
     _softBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     _softBtn.backgroundColor = [UIColor colorWithValue:@"#00FF87" alpha:0.08];
     _softBtn.frame = CGRectMake(CGRectGetMaxX(_mediumBtn.frame) + quickGap, 16, quickBtnW, 36);
+    _softBtn.tag = 3003;
     _softBtn.titleLabel.font = [UIFont systemFontOfSize:SCALE(12.0)];
     _softBtn.layer.cornerRadius = 18.0;
     _softBtn.layer.masksToBounds = YES;
@@ -782,6 +785,7 @@
     _softBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     [_softBtn setBackgroundColor:[UIColor clearColor]];
     _softBtn.frame = CGRectMake(0, 0, _faterView.frame.size.width/3, 36);
+    _softBtn.tag = 3003;
     [_softBtn setTitle:@"软" forState:UIControlStateNormal];
     [_softBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_softBtn addTarget:self action:@selector(controlQuickAdjust:) forControlEvents:UIControlEventTouchUpInside];
@@ -790,6 +794,7 @@
     _mediumBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     [_mediumBtn setBackgroundColor:[UIColor clearColor]];
     _mediumBtn.frame = CGRectMake(CGRectGetMaxX(_softBtn.frame), 0, _faterView.frame.size.width/3, 36);
+    _mediumBtn.tag = 3002;
     [_mediumBtn setTitle:@"适中" forState:UIControlStateNormal];
     [_mediumBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_mediumBtn addTarget:self action:@selector(controlQuickAdjust:) forControlEvents:UIControlEventTouchUpInside];
@@ -798,6 +803,7 @@
     _hardBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     [_hardBtn setBackgroundColor:[UIColor clearColor]];
     _hardBtn.frame = CGRectMake(CGRectGetMaxX(_mediumBtn.frame), 0, _faterView.frame.size.width/3, 36);
+    _hardBtn.tag = 3001;
     [_hardBtn setTitle:@"硬" forState:UIControlStateNormal];
     [_hardBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_hardBtn addTarget:self action:@selector(controlQuickAdjust:) forControlEvents:UIControlEventTouchUpInside];
@@ -1396,7 +1402,7 @@
     [self showManualAdjustingOverlay];
     int level = 0;
     
-    if (btn == _softBtn) {
+    if (btn.tag == 3003) {
 //        [UIView animateWithDuration:0.2 animations:^{
 //            self.quickView.frame = CGRectMake(0, 0, CGRectGetWidth(self.faterView.frame)/3, 36);
 //        }];
@@ -1407,7 +1413,7 @@
         }
     }
     
-    if (btn == _mediumBtn) {
+    if (btn.tag == 3002) {
 //        [UIView animateWithDuration:0.2 animations:^{
 //            self.quickView.frame = CGRectMake(CGRectGetMaxX(self.softBtn.frame), 0, CGRectGetWidth(self.faterView.frame)/3, 36);
 //        }];
@@ -1417,7 +1423,7 @@
         }
     }
     
-    if (btn == _hardBtn) {
+    if (btn.tag == 3001) {
 //        [UIView animateWithDuration:0.2 animations:^{
 //            self.quickView.frame = CGRectMake(CGRectGetMaxX(self.mediumBtn.frame), 0, CGRectGetWidth(self.faterView.frame)/3, 36);
 //        }];

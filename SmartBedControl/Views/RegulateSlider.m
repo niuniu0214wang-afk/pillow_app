@@ -58,8 +58,8 @@
 
     // 滑块：左边距 SCALE(35)，右边距 SCALE(55)，两端留出标签空间
     self.slider = [[UISlider alloc] initWithFrame:CGRectMake(SCALE(35), CGRectGetMaxY(self.partLabel.frame) + 8, viewW - SCALE(90), 16)];
-    [self.slider setMaximumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#ffffff" alpha:0.06]] forState:UIControlStateNormal];
-    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:[UIColor colorWithValue:@"#00d4ff"]] forState:UIControlStateNormal];
+    self.slider.maximumTrackTintColor = [UIColor colorWithValue:@"#ffffff" alpha:0.06];
+    self.slider.minimumTrackTintColor = [UIColor colorWithValue:@"#00d4ff"];
     [self.slider setThumbImage:[UIImage imageNamed:@"sliderPoint"] forState:UIControlStateNormal];
     [self.slider addTarget:self action:@selector(levelChanged:) forControlEvents:UIControlEventValueChanged];
     [self.slider addTarget:self action:@selector(levelChangeEnd:) forControlEvents:UIControlEventTouchUpInside];
@@ -111,7 +111,7 @@
     UIColor *color = [self colorForValue:value];
     _valueLabel.textColor = color;
     _dotView.backgroundColor = color;
-    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:color] forState:UIControlStateNormal];
+    self.slider.minimumTrackTintColor = color;
 }
 
 - (void)setTitle:(NSString *)title
@@ -128,7 +128,7 @@
     _valueLabel.text = [NSString stringWithFormat:@"%d", current];
     _valueLabel.textColor = color;
     _dotView.backgroundColor = color;
-    [self.slider setMinimumTrackImage:[self sliderTrackImageWithColor:color] forState:UIControlStateNormal];
+    self.slider.minimumTrackTintColor = color;
 }
 
 // 滑动结束：触感反馈 + 通知代理
