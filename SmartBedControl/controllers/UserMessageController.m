@@ -201,8 +201,8 @@
         _messageScrollView.contentSize = CGSizeMake(iPhoneWidth, iPhoneHeight);
         okBtn.frame = CGRectMake(20, CGRectGetMaxY(adviceBtn.frame) + 20, iPhoneWidth - 40, 56);
     }
-        
-    
+
+    [self loadSavedUserMessage];
     [self creatNavigatiocnBar];
 }
 
@@ -259,7 +259,62 @@
         [MJProgressHUD onlyShowMessage:@"请完善身高、体重和年龄" afterDelay:1.0 showAddTo:self.view];
         return;
     }
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:self.heightField.text forKey:@"profile_height"];
+    [defaults setObject:self.weightField.text forKey:@"profile_weight"];
+    [defaults setObject:self.ageField.text forKey:@"profile_age"];
+    [defaults setObject:[self selectedTitleForGroup:1 fallback:@"男"] forKey:@"profile_sex"];
+    [defaults setObject:[self selectedTitleForGroup:2 fallback:@"侧睡"] forKey:@"profile_sleep"];
+    [defaults setObject:self.neckField.text ?: @"" forKey:@"profile_neck"];
+    [defaults setObject:[self selectedTitleForGroup:3 fallback:@"适中"] forKey:@"profile_shoulder"];
+    [defaults setObject:[self selectedTitleForGroup:4 fallback:@"适中"] forKey:@"profile_back"];
+    [defaults setObject:[self selectedTitleForGroup:5 fallback:@"适中"] forKey:@"profile_mattress"];
+    [defaults synchronize];
     [MJProgressHUD onlyShowMessage:@"已保存个人信息" afterDelay:1.0 showAddTo:self.view];
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (void)loadSavedUserMessage
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    self.heightField.text = [defaults objectForKey:@"profile_height"] ?: @"";
+    self.weightField.text = [defaults objectForKey:@"profile_weight"] ?: @"";
+    self.ageField.text = [defaults objectForKey:@"profile_age"] ?: @"";
+    self.neckField.text = [defaults objectForKey:@"profile_neck"] ?: @"";
+    [self selectButtonTitle:[defaults objectForKey:@"profile_sex"] ?: @"男" group:1];
+    [self selectButtonTitle:[defaults objectForKey:@"profile_sleep"] ?: @"侧睡" group:2];
+    [self selectButtonTitle:[defaults objectForKey:@"profile_shoulder"] ?: @"适中" group:3];
+    [self selectButtonTitle:[defaults objectForKey:@"profile_back"] ?: @"适中" group:4];
+    [self selectButtonTitle:[defaults objectForKey:@"profile_mattress"] ?: @"适中" group:5];
+}
+
+- (NSString *)selectedTitleForGroup:(NSInteger)group fallback:(NSString *)fallback
+{
+    for (UIView *subview in self.messageScrollView.subviews) {
+        if (![subview isKindOfClass:[UIButton class]]) {
+            continue;
+        }
+        UIButton *button = (UIButton *)subview;
+        if (button.tag / 100 == group && button.selected) {
+            return [button titleForState:UIControlStateNormal] ?: fallback;
+        }
+    }
+    return fallback;
+}
+
+- (void)selectButtonTitle:(NSString *)title group:(NSInteger)group
+{
+    for (UIView *subview in self.messageScrollView.subviews) {
+        if (![subview isKindOfClass:[UIButton class]]) {
+            continue;
+        }
+        UIButton *button = (UIButton *)subview;
+        if (button.tag / 100 == group) {
+            BOOL selected = [[button titleForState:UIControlStateNormal] isEqualToString:title];
+            button.selected = selected;
+            button.layer.borderColor = selected ? highBorderColor.CGColor : bordorColor.CGColor;
+        }
+    }
 }
 
 

@@ -64,7 +64,7 @@
 {
     MainController *homeVC = [[MainController alloc] init];
     UINavigationController *homeNav = [[UINavigationController alloc] initWithRootViewController:homeVC];
-    UITabBarItem *tabBarItemZero = [[UITabBarItem alloc] initWithTitle:@"Home"
+    UITabBarItem *tabBarItemZero = [[UITabBarItem alloc] initWithTitle:@"首页"
                                                                  image:[[UIImage imageNamed:@"home_normal"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]
                                                                    tag:0];
     tabBarItemZero.selectedImage = [[UIImage imageNamed:@"home_high"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -72,7 +72,7 @@
     [self addChildViewController:homeNav];
 
     SleepDataController *dataVC = [[SleepDataController alloc] init];
-    UITabBarItem *tabBarItemOne = [[UITabBarItem alloc] initWithTitle:@"Sleep"
+    UITabBarItem *tabBarItemOne = [[UITabBarItem alloc] initWithTitle:@"睡眠"
                                                                 image:[[UIImage imageNamed:@"data_normal"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]
                                                                   tag:1];
     tabBarItemOne.selectedImage = [[UIImage imageNamed:@"data_high"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -82,7 +82,7 @@
     MineController *mineVC = [[MineController alloc] init];
     UINavigationController *mineNav = [[UINavigationController alloc] initWithRootViewController:mineVC];
     mineNav.navigationBarHidden = YES;
-    UITabBarItem *tabBarItemTwo = [[UITabBarItem alloc] initWithTitle:@"Profile"
+    UITabBarItem *tabBarItemTwo = [[UITabBarItem alloc] initWithTitle:@"我的"
                                                                image:[[UIImage imageNamed:@"mine_normal"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]
                                                                  tag:2];
     tabBarItemTwo.selectedImage = [[UIImage imageNamed:@"mine_high"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];

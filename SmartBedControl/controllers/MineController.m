@@ -45,6 +45,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self loadProfileValues];
     [self rebuildDataSource];
     [self.tableView reloadData];
 }
@@ -52,7 +53,7 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = mainColor;
-    self.profileValues = @[@"175cm", @"65kg", @"25", @"男", @"侧睡"];
+    [self loadProfileValues];
 
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, STATUS_BAR_HEIGHT, 70, 25)];
     titleLabel.textAlignment = NSTextAlignmentLeft;
@@ -84,6 +85,23 @@ typedef NS_ENUM(NSInteger, MJProfileDetailType) {
     [_tableView registerNib:[UINib nibWithNibName:@"MineCell" bundle:[NSBundle mainBundle]] forCellReuseIdentifier:@"MineCell"];
     [_tableView registerNib:[UINib nibWithNibName:@"FamilyCell" bundle:[NSBundle mainBundle]] forCellReuseIdentifier:@"FamilyCell"];
     [self rebuildDataSource];
+}
+
+- (void)loadProfileValues
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *height = [defaults objectForKey:@"profile_height"] ?: @"175";
+    NSString *weight = [defaults objectForKey:@"profile_weight"] ?: @"65";
+    NSString *age = [defaults objectForKey:@"profile_age"] ?: @"25";
+    NSString *sex = [defaults objectForKey:@"profile_sex"] ?: @"男";
+    NSString *sleep = [defaults objectForKey:@"profile_sleep"] ?: @"侧睡";
+    self.profileValues = @[
+        [NSString stringWithFormat:@"%@cm", height],
+        [NSString stringWithFormat:@"%@kg", weight],
+        age,
+        sex,
+        sleep
+    ];
 }
 
 - (void)rebuildDataSource
