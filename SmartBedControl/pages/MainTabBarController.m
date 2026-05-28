@@ -9,6 +9,8 @@
 #import "MainController.h"
 #import "../controllers/MineController.h"
 #import "../controllers/SleepDataController.h"
+#import "../Tools/BLEManager.h"
+#import "../Tools/DataCenter.h"
 
 #import "../controllers/MineController.h"
 #import "../controllers/SleepDataController.h"
@@ -18,6 +20,7 @@
 #import "PillowController.h"
 
 @interface MainTabBarController ()
+@property (nonatomic, assign) BedMode displayedMode;
 
 @end
 
@@ -58,11 +61,30 @@
     }
 
     [self creatTabBarControllers];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(currentDeviceDidChange) name:@"CurrentDeviceDidChangeNotification" object:nil];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    [self currentDeviceDidChange];
 }
 
 - (void)creatTabBarControllers
 {
-    MainController *homeVC = [[MainController alloc] init];
+    self.displayedMode = [self currentDeviceMode];
+
+    UIViewController *homeVC;
+    if (self.displayedMode == PillowNormal) {
+        homeVC = [[PillowController alloc] init];
+    } else {
+        homeVC = [[MainController alloc] init];
+    }
     UINavigationController *homeNav = [[UINavigationController alloc] initWithRootViewController:homeVC];
     UITabBarItem *tabBarItemZero = [[UITabBarItem alloc] initWithTitle:@"首页"
                                                                  image:[[UIImage imageNamed:@"home_normal"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]
@@ -90,6 +112,31 @@
     [self addChildViewController:mineNav];
 
     self.selectedIndex = 0;
+}
+
+- (BedMode)currentDeviceMode
+{
+    BedModel *connectedBed = [DataCenter shareInstance].connectedBed;
+    if (connectedBed) {
+        return connectedBed.mode;
+    }
+    return [BLEManager shareInstance].mode;
+}
+
+- (void)currentDeviceDidChange
+{
+    BedMode mode = [self currentDeviceMode];
+    if (mode == self.displayedMode || self.viewControllers.count == 0) {
+        return;
+    }
+
+    self.displayedMode = mode;
+    NSMutableArray *controllers = [self.viewControllers mutableCopy];
+    UIViewController *replacementRoot = mode == PillowNormal ? [[PillowController alloc] init] : [[MainController alloc] init];
+    UINavigationController *replacementNav = [[UINavigationController alloc] initWithRootViewController:replacementRoot];
+    replacementNav.tabBarItem = ((UIViewController *)controllers.firstObject).tabBarItem;
+    controllers[0] = replacementNav;
+    self.viewControllers = controllers.copy;
 }
 
 

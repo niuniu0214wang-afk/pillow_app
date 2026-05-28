@@ -11,17 +11,31 @@
 #import "login/LoginController.h"
 #import "login/LoginNavController.h"
 #import "pages/MainTabBarController.h"
+#import "Tools/BLEManager.h"
+#import "Tools/DataCenter.h"
 @interface SceneDelegate ()
 
 @end
 
 @implementation SceneDelegate
 
+- (void)applySimulatorDefaultDevice
+{
+#if TARGET_OS_SIMULATOR
+    BedModel *pillowBed = [[BedModel alloc] init];
+    pillowBed.mode = PillowNormal;
+    pillowBed.bedName = @"DreamPillow Pro";
+    [DataCenter shareInstance].connectedBed = pillowBed;
+    [BLEManager shareInstance].mode = PillowNormal;
+#endif
+}
+
 
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
     
     UIWindowScene *windowScene = (UIWindowScene *)scene;
     self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    [self applySimulatorDefaultDevice];
     
 //    MainTabBarController *mainTabBarVC = [[MainTabBarController alloc] init];
 //    self.window.rootViewController = mainTabBarVC;
@@ -40,6 +54,7 @@
 
 - (void)changeYellowController
 {
+    [self applySimulatorDefaultDevice];
     MainTabBarController *mainTabBarVC = [[MainTabBarController alloc] init];
     self.window.rootViewController = mainTabBarVC;
     [self.window makeKeyAndVisible];

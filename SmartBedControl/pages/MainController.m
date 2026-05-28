@@ -395,8 +395,8 @@
     
     
     CGFloat zoneTop = CGRectGetMaxY(bedImageView.frame) + 12;
-    NSInteger zoneColumns = _partArr.count <= 3 ? 3 : 3;
-    CGFloat zoneGap = 8.0;
+    NSInteger zoneColumns = self.connectedMode == BedPro ? 6 : 3;
+    CGFloat zoneGap = self.connectedMode == BedPro ? 6.0 : 8.0;
     CGFloat zoneCardW = (iPhoneWidth - cardPad * 2 - zoneGap * (zoneColumns - 1)) / zoneColumns;
     CGFloat zoneCardH = 62.0;
     NSMutableArray *statusLabels = [NSMutableArray array];
@@ -414,20 +414,21 @@
         [self.autoModeView addSubview:zoneCard];
         [zoneCards addObject:zoneCard];
 
-        UIView *dot = [[UIView alloc] initWithFrame:CGRectMake((zoneCardW - 7) / 2.0, 10, 7, 7)];
+        UIView *dot = [[UIView alloc] initWithFrame:CGRectZero];
         dot.backgroundColor = [UIColor colorWithValue:@"#eab308"];
         dot.layer.cornerRadius = 3.5;
+        dot.hidden = YES;
         [zoneCard addSubview:dot];
         [statusDots addObject:dot];
 
-        UILabel *nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 23, zoneCardW - 8, 16)];
+        UILabel *nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 18, zoneCardW - 8, 16)];
         nameLabel.text = _partArr[i];
         nameLabel.textColor = [UIColor colorWithValue:@"#d1d5db"];
         nameLabel.textAlignment = NSTextAlignmentCenter;
         nameLabel.font = [UIFont systemFontOfSize:11.0];
         [zoneCard addSubview:nameLabel];
 
-        UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 40, zoneCardW - 8, 14)];
+        UILabel *statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(4, 36, zoneCardW - 8, 14)];
         statusLabel.text = @"";
         statusLabel.textColor = [UIColor colorWithValue:@"#fde68a"];
         statusLabel.textAlignment = NSTextAlignmentCenter;
@@ -449,12 +450,13 @@
     [self.autoModeView addSubview:statusView];
     self.autoAdaptiveStatusView = statusView;
 
-    UIView *adjustDot = [[UIView alloc] initWithFrame:CGRectMake(18, 17, 8, 8)];
+    UIView *adjustDot = [[UIView alloc] initWithFrame:CGRectZero];
     adjustDot.layer.cornerRadius = 4.0;
+    adjustDot.hidden = YES;
     [statusView addSubview:adjustDot];
     self.autoAdaptiveStatusDot = adjustDot;
 
-    UILabel *statusText = [[UILabel alloc] initWithFrame:CGRectMake(34, 0, statusView.frame.size.width - 50, 42)];
+    UILabel *statusText = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, statusView.frame.size.width, 42)];
     statusText.text = @"自适应调节中";
     statusText.textAlignment = NSTextAlignmentCenter;
     statusText.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
@@ -467,15 +469,17 @@
     modeTitle.font = [UIFont systemFontOfSize:12.0];
     [self.autoModeView addSubview:modeTitle];
 
-    NSArray *autoModes = @[
+    NSArray *allAutoModes = @[
         @{@"title":@"牵引模式", @"desc":@"分区拉伸支撑", @"icon":@"lashen", @"color":@"#00d4ff"},
         @{@"title":@"悬浮模式", @"desc":@"降低局部压迫", @"icon":@"zhumian", @"color":@"#a78bfa"},
         @{@"title":@"怀抱模式", @"desc":@"柔和包裹承托", @"icon":@"anmo", @"color":@"#f97316"},
         @{@"title":@"海浪模式", @"desc":@"循环起伏放松", @"icon":@"hailang", @"color":@"#00FF87"}
     ];
+    NSArray *autoModes = self.connectedMode == BedNormal ? @[allAutoModes.firstObject] : allAutoModes;
 
     CGFloat autoGridTop = CGRectGetMaxY(modeTitle.frame) + 10;
-    CGFloat autoCardW = (iPhoneWidth - cardPad * 2 - cardGap) / 2.0;
+    NSInteger autoColumns = self.connectedMode == BedNormal ? 1 : 2;
+    CGFloat autoCardW = (iPhoneWidth - cardPad * 2 - cardGap * (autoColumns - 1)) / autoColumns;
     CGFloat autoCardH = 86.0;
     NSMutableArray *autoTimeLabels = [NSMutableArray array];
     NSMutableArray *autoModeCards = [NSMutableArray array];
@@ -484,8 +488,8 @@
     self.autoModeDurations = [NSMutableArray array];
     for (int i = 0; i < autoModes.count; i++) {
         NSDictionary *dict = autoModes[i];
-        NSInteger col = i % 2;
-        NSInteger row = i / 2;
+        NSInteger col = i % autoColumns;
+        NSInteger row = i / autoColumns;
         UIButton *modeCard = [UIButton buttonWithType:UIButtonTypeCustom];
         modeCard.frame = CGRectMake(cardPad + col * (autoCardW + cardGap), autoGridTop + row * (autoCardH + cardGap), autoCardW, autoCardH);
         modeCard.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
@@ -558,7 +562,8 @@
     self.activeAutoModeIndex = -1;
     [self activateAdaptiveAutoMode];
 
-    autoScrollView.contentSize = CGSizeMake(0, autoGridTop + autoCardH * 2 + cardGap + 24);
+    NSInteger autoRows = ceil((double)autoModes.count / (double)autoColumns);
+    autoScrollView.contentSize = CGSizeMake(0, autoGridTop + autoCardH * autoRows + cardGap * MAX(0, autoRows - 1) + 24);
     self.autoModeView.hidden = NO;
     
   //**********************************手动调节******************************

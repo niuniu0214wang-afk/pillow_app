@@ -316,6 +316,7 @@
         BedModel *bed = item;
         [DataCenter shareInstance].connectedBed = bed;
         [BLEManager shareInstance].mode = bed.mode;
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"CurrentDeviceDidChangeNotification" object:nil];
         if (bed.mode == PillowNormal) {
             PillowController *pillowVC = [[PillowController alloc] init];
             [self.navigationController pushViewController:pillowVC animated:YES];

@@ -12,6 +12,8 @@
 #import "../Views/SleepView.h"
 #import "../Views/SleepChartView.h"
 #import "../data/SleepDataModel.h"
+#import "../Tools/BLEManager.h"
+#import "../Tools/DataCenter.h"
 
 
 @interface SleepDataController ()
@@ -37,6 +39,7 @@
 @property (strong, nonatomic) UILabel *heartRateValueLabel;
 @property (strong, nonatomic) UILabel *turnOverValueLabel;
 @property (strong, nonatomic) UILabel *sitUpValueLabel;
+@property (assign, nonatomic) BedMode currentMode;
 
 @end
 
@@ -83,6 +86,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = mainColor;
+    self.currentMode = [DataCenter shareInstance].connectedBed ? [DataCenter shareInstance].connectedBed.mode : [BLEManager shareInstance].mode;
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleCurrentDeviceDidChange) name:@"CurrentDeviceDidChangeNotification" object:nil];
 
     // 先加载数据，再构建 UI
     [self loadDayData:^(SleepDayData *data) {
@@ -97,6 +102,22 @@
     
 }
 
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)handleCurrentDeviceDidChange
+{
+    BedMode mode = [DataCenter shareInstance].connectedBed ? [DataCenter shareInstance].connectedBed.mode : [BLEManager shareInstance].mode;
+    if (mode == self.currentMode) {
+        return;
+    }
+    self.currentMode = mode;
+    [self.view.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self buildUI];
+}
+
 #pragma mark - UI 构建（只读 self.currentDayData / self.currentWeekData）
 
 - (void)buildUI {
@@ -106,7 +127,7 @@
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, STATUS_BAR_HEIGHT, 150, 30)];
     titleLabel.textColor = [UIColor whiteColor];
     titleLabel.font = [UIFont systemFontOfSize:18.0 weight:UIFontWeightLight];
-    titleLabel.text = @"睡眠报告";
+    titleLabel.text = self.currentMode == PillowNormal ? @"枕头报告" : @"睡眠报告";
     [self.view addSubview:titleLabel];
 
     UIButton *bedBtn = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -118,7 +139,7 @@
     bedBtn.layer.borderWidth = 1.0;
     bedBtn.titleLabel.font = [UIFont systemFontOfSize:12.0];
     [bedBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    [bedBtn setTitle:@"左床" forState:UIControlStateNormal];
+    [bedBtn setTitle:(self.currentMode == PillowNormal ? @"智能枕" : @"左床") forState:UIControlStateNormal];
     [self.view addSubview:bedBtn];
 
     // ── 日报/周报切换 ──
@@ -160,7 +181,6 @@
     // ── 日报 ScrollView ──
     _scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_btnBG.frame) + 10, iPhoneWidth, iPhoneHeight - TAB_BAR_HEIGHT - CGRectGetMaxY(_btnBG.frame) - 10)];
     _scrollView.backgroundColor = [UIColor clearColor];
-    _scrollView.contentSize = CGSizeMake(0, 1900);
     [self.view addSubview:_scrollView];
 
     // ── 周选择器（修复：等分布局，小屏不崩溃）──
@@ -244,14 +264,14 @@
     UILabel *adjustTitle = [[UILabel alloc] initWithFrame:CGRectMake(28, 10, 200, 16)];
     adjustTitle.font = [UIFont systemFontOfSize:11.0];
     adjustTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
-    adjustTitle.text = @"自动调节回顾";
+    adjustTitle.text = self.currentMode == PillowNormal ? @"干预回顾" : @"自动调节回顾";
     [adjustCard addSubview:adjustTitle];
 
     UILabel *adjustContent = [[UILabel alloc] initWithFrame:CGRectMake(14, 32, iPhoneWidth - 68, 50)];
     adjustContent.textColor = [UIColor colorWithValue:@"#9ca3af"];
     adjustContent.numberOfLines = 0;
     adjustContent.font = [UIFont systemFontOfSize:12.0];
-    adjustContent.text = [NSString stringWithFormat:@"在您入睡期间，BOP 悄悄为您进行了 %ld 次自动调节，重点优化了肩背与腰臀支撑。", (long)day.autoAdjustCount];
+    adjustContent.text = self.currentMode == PillowNormal ? [NSString stringWithFormat:@"在您入睡期间，智能枕完成了 %ld 次鼾声与姿态干预，帮助维持更稳定的颈部支撑。", (long)day.autoAdjustCount] : [NSString stringWithFormat:@"在您入睡期间，BOP 悄悄为您进行了 %ld 次自动调节，重点优化了肩背与腰臀支撑。", (long)day.autoAdjustCount];
     [adjustCard addSubview:adjustContent];
 
     // ── 健康检查（修复：统一用 iPhoneWidth/5 基准，图标与文字对齐）──
@@ -366,21 +386,23 @@
     UILabel *aiLabel1 = [[UILabel alloc] initWithFrame:CGRectMake(62, 16, 100, 18)];
     aiLabel1.textColor = [UIColor colorWithValue:@"#6b7280"];
     aiLabel1.font = [UIFont systemFontOfSize:10.0];
-    aiLabel1.text = @"AI分析";
+    aiLabel1.text = self.currentMode == PillowNormal ? @"AI干预分析" : @"AI分析";
     [aiCard addSubview:aiLabel1];
 
     UILabel *aiLabel2 = [[UILabel alloc] initWithFrame:CGRectMake(62, CGRectGetMaxY(aiLabel1.frame), iPhoneWidth - 100, 44)];
     aiLabel2.textColor = [UIColor colorWithValue:@"#9ca3af"];
     aiLabel2.numberOfLines = 0;
     aiLabel2.font = [UIFont systemFontOfSize:12.0];
-    aiLabel2.text = @"昨夜翻身次数较少，睡姿整体稳定，深度睡眠提升了 15%。自动调节系统在整夜进行了 20 次睡姿优化。";
+    aiLabel2.text = self.currentMode == PillowNormal ? @"昨夜鼾声波动较少，侧睡与仰睡切换稳定。智能枕在整夜执行了多次柔性干预，帮助维持呼吸顺畅与颈部支撑。" : @"昨夜翻身次数较少，睡姿整体稳定，深度睡眠提升了 15%。自动调节系统在整夜进行了 20 次睡姿优化。";
     [aiCard addSubview:aiLabel2];
 
     UILabel *aiLabel3 = [[UILabel alloc] initWithFrame:CGRectMake(62, CGRectGetMaxY(aiLabel2.frame), iPhoneWidth - 100, 18)];
     aiLabel3.textColor = [UIColor colorWithValue:@"#4b5563"];
     aiLabel3.font = [UIFont systemFontOfSize:10.0];
-    aiLabel3.text = @"基于睡眠健康模型与大规模睡眠数据建立的个性化分析引擎。";
+    aiLabel3.text = self.currentMode == PillowNormal ? @"基于枕头压力分布、鼾声干预节奏与姿态切换建立的个性化分析引擎。" : @"基于睡眠健康模型与大规模睡眠数据建立的个性化分析引擎。";
     [aiCard addSubview:aiLabel3];
+
+    _scrollView.contentSize = CGSizeMake(0, CGRectGetMaxY(aiCard.frame) + 30);
 
     [self buildWeekDataView];
 }
@@ -515,7 +537,7 @@
         @[@"周均评分", @"79"],
         @[@"周均睡眠时长", @"8.0h"],
         @[@"周均翻身次数", @"15"],
-        @[@"自动调节总次数", @"154"]
+        @[self.currentMode == PillowNormal ? @"干预总次数" : @"自动调节总次数", @"154"]
     ];
     for (NSInteger i = 0; i < metrics.count; i++) {
         NSArray *metric = metrics[i];
@@ -562,7 +584,7 @@
     [_weekDataView addSubview:_chartThree];
 
     SleepChartView *autoChart = [[SleepChartView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_chartThree.frame) + 14, iPhoneWidth, 180)];
-    autoChart.title = @"自动调节趋势";
+    autoChart.title = self.currentMode == PillowNormal ? @"干预趋势" : @"自动调节趋势";
     autoChart.color = [UIColor colorWithValue:@"#38bdf8"];
     autoChart.dataSource = @[@18,@20,@22,@24,@21,@26,@23];
     [_weekDataView addSubview:autoChart];
@@ -582,7 +604,7 @@
     [summaryCard addSubview:summaryTitle];
 
     UILabel *summary = [[UILabel alloc] initWithFrame:CGRectMake(16, 42, summaryCard.bounds.size.width - 32, 108)];
-    summary.text = @"• 本周睡眠评分在周四和周六达到峰值，自动调节完成度与评分变化呈正相关。\n• 翻身次数整体呈下降趋势，说明床垫支撑逐步稳定。\n• 周末睡眠时长更长，但工作日的入睡效率更好，建议维持固定入睡时段。";
+    summary.text = self.currentMode == PillowNormal ? @"• 本周枕头干预主要集中在后半夜，整体节奏较为平稳。\n• 仰卧与侧卧切换后的支撑恢复速度较快，说明高度策略较稳定。\n• 若后续接入真实鼾声与压力数据，可进一步细化干预时段与灵敏度建议。" : @"• 本周睡眠评分在周四和周六达到峰值，自动调节完成度与评分变化呈正相关。\n• 翻身次数整体呈下降趋势，说明床垫支撑逐步稳定。\n• 周末睡眠时长更长，但工作日的入睡效率更好，建议维持固定入睡时段。";
     summary.textColor = [UIColor colorWithValue:@"#9ca3af"];
     summary.font = [UIFont systemFontOfSize:12.0];
     summary.numberOfLines = 0;
