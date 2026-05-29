@@ -36,6 +36,7 @@
 @property (strong, nonatomic) UIView *heightAdviceSheet;
 @property (strong, nonatomic) NSArray<UIButton *> *manualPressureCards;
 @property (strong, nonatomic) NSArray<UILabel *> *manualPressureValueLabels;
+@property (strong, nonatomic) UILabel *manualPressureSliderTitleLabel;
 @property (strong, nonatomic) UISlider *manualPressureSlider;
 @property (strong, nonatomic) NSMutableArray<NSNumber *> *manualPressureValues;
 @property (assign, nonatomic) NSInteger selectedManualPressureIndex;
@@ -51,7 +52,12 @@
     _recommendedSideHeight = 9;
     _recommendedBackHeight = 7;
     _selectedManualPressureIndex = 0;
-    _manualPressureValues = [@[@34, @31, @36, @28, @29] mutableCopy];
+    NSArray *savedManualPressureValues = [[NSUserDefaults standardUserDefaults] objectForKey:@"pillow_manual_pressure_values"];
+    if (savedManualPressureValues.count == 5) {
+        _manualPressureValues = [savedManualPressureValues mutableCopy];
+    } else {
+        _manualPressureValues = [@[@34, @31, @36, @28, @29] mutableCopy];
+    }
 
 
     UIColor *color = [UIColor colorWithValue:@"ffffff" alpha:0.1];
@@ -816,88 +822,56 @@
         [self.manualPanelView addSubview:heightBtn];
     }
 
-    UILabel *memoryTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(overallTitle.frame) + 56, self.manualPanelView.bounds.size.width - 40, 18)];
-    memoryTitle.text = @"睡姿记忆模式";
-    memoryTitle.textColor = [UIColor colorWithValue:@"#6b7280"];
-    memoryTitle.font = [UIFont systemFontOfSize:12.0];
-    [self.manualPanelView addSubview:memoryTitle];
-
-    NSArray *memoryModes = @[@"午睡模式", @"侧睡舒适", @"新增记忆"];
-    CGFloat chipW = (self.manualPanelView.bounds.size.width - 52) / 3.0;
-    for (NSInteger i = 0; i < memoryModes.count; i++) {
-        UIButton *modeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
-        modeBtn.frame = CGRectMake(14 + i * (chipW + 6), CGRectGetMaxY(memoryTitle.frame) + 8, chipW, 34);
-        modeBtn.layer.cornerRadius = 17.0;
-        modeBtn.layer.borderWidth = 1.0;
-        modeBtn.layer.borderColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#27272a") alpha:(i == 2 ? 0.35 : 1.0)].CGColor;
-        modeBtn.backgroundColor = [UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#18181b") alpha:(i == 2 ? 0.10 : 1.0)];
-        [modeBtn setTitle:memoryModes[i] forState:UIControlStateNormal];
-        [modeBtn setTitleColor:[UIColor colorWithValue:(i == 2 ? @"#00d4ff" : @"#9ca3af")] forState:UIControlStateNormal];
-        modeBtn.titleLabel.font = [UIFont systemFontOfSize:11.0];
-        [modeBtn addTarget:self action:@selector(showMemoryModeFlow:) forControlEvents:UIControlEventTouchUpInside];
-        [self.manualPanelView addSubview:modeBtn];
-    }
-
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(memoryTitle.frame) + 54, self.manualPanelView.bounds.size.width - 40, 18)];
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20, CGRectGetMaxY(overallTitle.frame) + 56, self.manualPanelView.bounds.size.width - 40, 18)];
     title.text = @"气囊压力";
     title.textColor = [UIColor colorWithValue:@"#6b7280"];
     title.font = [UIFont systemFontOfSize:12.0];
     [self.manualPanelView addSubview:title];
 
-    NSArray *rows = @[@"后枕分区", @"左边区", @"左中区", @"右中区", @"右边区"];
+    NSArray *rows = @[@"后枕", @"左边", @"左中", @"右中", @"右边"];
     NSMutableArray *cards = [NSMutableArray array];
     NSMutableArray *valueLabels = [NSMutableArray array];
     CGFloat y = CGRectGetMaxY(title.frame) + 12;
+    CGFloat cardGap = 6.0;
+    CGFloat cardW = (self.manualPanelView.bounds.size.width - 28 - cardGap * 4) / 5.0;
     for (NSInteger i = 0; i < rows.count; i++) {
         UIButton *card = [UIButton buttonWithType:UIButtonTypeCustom];
-        card.frame = CGRectMake(14, y, self.manualPanelView.bounds.size.width - 28, 38);
+        card.frame = CGRectMake(14 + i * (cardW + cardGap), y, cardW, 64);
         card.tag = 3300 + i;
         card.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.03];
-        card.layer.cornerRadius = 12.0;
+        card.layer.cornerRadius = 14.0;
         card.layer.borderWidth = 1.0;
         card.layer.borderColor = [UIColor colorWithValue:@"#ffffff" alpha:0.10].CGColor;
         [card addTarget:self action:@selector(manualPressureCardTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.manualPanelView addSubview:card];
         [cards addObject:card];
 
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(12, 5, 90, 14)];
+        UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 12, card.bounds.size.width, 14)];
         label.text = rows[i];
+        label.textAlignment = NSTextAlignmentCenter;
         label.textColor = [UIColor colorWithValue:@"#9ca3af"];
         label.font = [UIFont systemFontOfSize:12.0];
         [card addSubview:label];
 
-        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(card.bounds.size.width - 58, 5, 42, 14)];
+        UILabel *value = [[UILabel alloc] initWithFrame:CGRectMake(0, 32, card.bounds.size.width, 18)];
         value.tag = 3000 + i;
         value.text = [NSString stringWithFormat:@"%@", self.manualPressureValues[i]];
         value.textColor = [UIColor whiteColor];
-        value.textAlignment = NSTextAlignmentRight;
-        value.font = [UIFont systemFontOfSize:12.0];
+        value.textAlignment = NSTextAlignmentCenter;
+        value.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
         [card addSubview:value];
         [valueLabels addObject:value];
-
-        UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(12, 24, card.bounds.size.width - 24, 4)];
-        bar.backgroundColor = [UIColor colorWithValue:@"#ffffff" alpha:0.08];
-        bar.layer.cornerRadius = 2.0;
-        [card addSubview:bar];
-
-        UIView *fill = [[UIView alloc] initWithFrame:CGRectMake(0, 0, bar.bounds.size.width * ([self.manualPressureValues[i] floatValue] / 60.0), 4)];
-        fill.tag = 3400 + i;
-        fill.backgroundColor = [self pillowPressureColor:[self.manualPressureValues[i] floatValue]];
-        fill.layer.cornerRadius = 2.0;
-        [bar addSubview:fill];
-
-        y += 44.0;
     }
+    y += 70.0;
     self.manualPressureCards = cards.copy;
     self.manualPressureValueLabels = valueLabels.copy;
 
-    UILabel *sliderTitle = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 8, self.manualPanelView.bounds.size.width - 40, 18)];
-    sliderTitle.text = @"调节当前选中区域";
-    sliderTitle.textColor = [UIColor colorWithValue:@"#9ca3af"];
-    sliderTitle.font = [UIFont systemFontOfSize:12.0];
-    [self.manualPanelView addSubview:sliderTitle];
+    self.manualPressureSliderTitleLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, y + 8, self.manualPanelView.bounds.size.width - 40, 18)];
+    self.manualPressureSliderTitleLabel.textColor = [UIColor colorWithValue:@"#9ca3af"];
+    self.manualPressureSliderTitleLabel.font = [UIFont systemFontOfSize:12.0];
+    [self.manualPanelView addSubview:self.manualPressureSliderTitleLabel];
 
-    self.manualPressureSlider = [[UISlider alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(sliderTitle.frame) + 8, self.manualPanelView.bounds.size.width - 48, 28)];
+    self.manualPressureSlider = [[UISlider alloc] initWithFrame:CGRectMake(24, CGRectGetMaxY(self.manualPressureSliderTitleLabel.frame) + 8, self.manualPanelView.bounds.size.width - 48, 28)];
     self.manualPressureSlider.minimumValue = 0;
     self.manualPressureSlider.maximumValue = 60;
     self.manualPressureSlider.value = [self.manualPressureValues[self.selectedManualPressureIndex] floatValue];
@@ -915,6 +889,18 @@
     hint.font = [UIFont systemFontOfSize:11.0];
     hint.numberOfLines = 0;
     [self.manualPanelView addSubview:hint];
+
+    UIButton *memoryButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    memoryButton.frame = CGRectMake(20, CGRectGetMaxY(hint.frame) + 12, self.manualPanelView.bounds.size.width - 40, 42);
+    memoryButton.backgroundColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.10];
+    memoryButton.layer.cornerRadius = 12.0;
+    memoryButton.layer.borderWidth = 1.0;
+    memoryButton.layer.borderColor = [UIColor colorWithValue:@"#00d4ff" alpha:0.30].CGColor;
+    [memoryButton setTitle:@"记忆当前气囊设置" forState:UIControlStateNormal];
+    [memoryButton setTitleColor:[UIColor colorWithValue:@"#00d4ff"] forState:UIControlStateNormal];
+    memoryButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    [memoryButton addTarget:self action:@selector(saveManualPressureValues) forControlEvents:UIControlEventTouchUpInside];
+    [self.manualPanelView addSubview:memoryButton];
 }
 
 - (UIColor *)pillowPressureColor:(CGFloat)value
@@ -969,6 +955,13 @@
     [[BLEManager shareInstance] didSendMessageToDevice:data];
 }
 
+- (void)saveManualPressureValues
+{
+    [[NSUserDefaults standardUserDefaults] setObject:self.manualPressureValues.copy forKey:@"pillow_manual_pressure_values"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [MJProgressHUD onlyShowMessage:@"已记忆当前气囊设置" afterDelay:1.0 showAddTo:self.view];
+}
+
 - (void)manualPressureCardTapped:(UIButton *)sender
 {
     NSInteger index = sender.tag - 3300;
@@ -984,7 +977,7 @@
 
 - (void)updateManualPressureSelectionUI
 {
-    CGFloat maxValue = MAX(self.manualPressureSlider.maximumValue, 1.0);
+    NSArray *rows = @[@"后枕", @"左边", @"左中", @"右中", @"右边"];
     for (NSInteger i = 0; i < self.manualPressureCards.count; i++) {
         UIButton *card = self.manualPressureCards[i];
         BOOL selected = i == self.selectedManualPressureIndex;
@@ -998,23 +991,18 @@
                 UILabel *label = (UILabel *)subview;
                 if (label.tag == 3000 + i) {
                     label.text = [NSString stringWithFormat:@"%d", (int)roundf(pressure)];
-                    label.textColor = [UIColor whiteColor];
+                    label.textColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#d1d5db")];
                     continue;
                 }
                 label.textColor = [UIColor colorWithValue:(selected ? @"#ffffff" : @"#9ca3af")];
-            }
-
-            UIView *fill = [subview viewWithTag:3400 + i];
-            if (fill) {
-                CGRect frame = fill.frame;
-                frame.size.width = subview.bounds.size.width * MIN(MAX(pressure / maxValue, 0.0), 1.0);
-                fill.frame = frame;
-                fill.backgroundColor = [self pillowPressureColor:pressure];
             }
         }
     }
 
     CGFloat selectedValue = [self.manualPressureValues[self.selectedManualPressureIndex] floatValue];
+    if (self.selectedManualPressureIndex >= 0 && self.selectedManualPressureIndex < rows.count) {
+        self.manualPressureSliderTitleLabel.text = [NSString stringWithFormat:@"调节%@气囊压力", rows[self.selectedManualPressureIndex]];
+    }
     self.manualPressureSlider.value = selectedValue;
     self.manualPressureSlider.minimumTrackTintColor = [self pillowPressureColor:selectedValue];
 }

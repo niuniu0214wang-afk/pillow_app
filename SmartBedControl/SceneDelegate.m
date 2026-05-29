@@ -22,11 +22,11 @@
 - (void)applySimulatorDefaultDevice
 {
 #if TARGET_OS_SIMULATOR
-    BedModel *pillowBed = [[BedModel alloc] init];
-    pillowBed.mode = PillowNormal;
-    pillowBed.bedName = @"DreamPillow Pro";
-    [DataCenter shareInstance].connectedBed = pillowBed;
-    [BLEManager shareInstance].mode = PillowNormal;
+    BedModel *bed = [[BedModel alloc] init];
+    bed.mode = BedNormal;
+    bed.bedName = @"AI Adaptive Mattress Pro";
+    [DataCenter shareInstance].connectedBed = bed;
+    [BLEManager shareInstance].mode = BedNormal;
 #endif
 }
 
